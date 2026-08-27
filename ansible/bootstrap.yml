@@ -25,6 +25,29 @@
       args:
         creates: /usr/local/bin/k3s
 
+    - name: Ensure .kube directory exists
+      ansible.builtin.file:
+        path: /home/{{ ansible_user }}/.kube
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0700"
+
+    - name: Copy kubeconfig for {{ ansible_user }}
+      ansible.builtin.copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: /home/{{ ansible_user }}/.kube/config
+        remote_src: true
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0600"
+
+    - name: Set KUBECONFIG in .bashrc for {{ ansible_user }}
+      ansible.builtin.lineinfile:
+        path: /home/{{ ansible_user }}/.bashrc
+        line: "export KUBECONFIG=$HOME/.kube/config"
+        create: true
+
     - name: Ensure k3s service is active
       ansible.builtin.systemd:
         name: k3s
@@ -96,11 +119,11 @@
       changed_when: false
 
     - name: Wait for argocd-server
-      ansible.builtin.command: kubectl wait deployment/argocd-server -n argocd --for=condition=Available --timeout=150s
+      ansible.builtin.command: kubectl wait deployment/argocd-server -n argocd --for=jsonpath='{.status.readyReplicas}'=1 --timeout=150s
       changed_when: false
 
     - name: Wait for argocd-repo-server
-      ansible.builtin.command: kubectl wait deployment/argocd-repo-server -n argocd --for=condition=Available --timeout=150s
+      ansible.builtin.command: kubectl wait deployment/argocd-repo-server -n argocd --for=jsonpath='{.status.readyReplicas}'=1 --timeout=150s
       changed_when: false
 
     - name: Wait for argocd-application-controller

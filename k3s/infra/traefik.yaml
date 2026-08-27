@@ -23,6 +23,9 @@ spec:
         metrics:
           prometheus:
             enabled: true
+        service:
+          spec:
+            loadBalancerIP: "10.10.10.240"
   destination:
     server: https://kubernetes.default.svc
     namespace: traefik
