@@ -2,6 +2,12 @@
   hosts: server
   become: true
   tasks:
+    - name: Ensure k3s config directory exists
+      ansible.builtin.file:
+        path: /etc/rancher/k3s
+        state: directory
+        mode: "0755"
+
     - name: Write k3s config file
       ansible.builtin.copy:
         dest: /etc/rancher/k3s/config.yaml
@@ -52,20 +58,16 @@
       changed_when: false
 
     - name: Publish discovery doc
-      ansible.builtin.shell: aws s3 cp <(printf "%s\n" "{{ oidc_discovery.stdout }}") s3://{{ s3_bucket }}/{{ s3_key }}/.well-known/openid-configuration
+      ansible.builtin.shell: printf "%s\n" "{{ oidc_discovery.stdout }}" | aws s3 cp - s3://{{ s3_bucket }}/{{ s3_key }}/.well-known/openid-configuration
       delegate_to: localhost
       become: false
       changed_when: false
-      args:
-        executable: /bin/bash
 
     - name: Publish JWKS
-      ansible.builtin.shell: aws s3 cp <(printf "%s\n" "{{ oidc_jwks.stdout }}") s3://{{ s3_bucket }}/{{ s3_key }}/openid/v1/jwks
+      ansible.builtin.shell: printf "%s\n" "{{ oidc_jwks.stdout }}" | aws s3 cp - s3://{{ s3_bucket }}/{{ s3_key }}/openid/v1/jwks
       delegate_to: localhost
       become: false
       changed_when: false
-      args:
-        executable: /bin/bash
 
 - name: Bootstrap argocd
   hosts: server
@@ -73,9 +75,23 @@
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   tasks:
+    - name: Ensure git is installed
+      ansible.builtin.package:
+        name: git
+        state: present
+
+    - name: Install argocd CLI
+      shell: |
+        VERSION=v3.3.7
+        curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/download/$VERSION/argocd-linux-amd64
+        install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
+        rm argocd-linux-amd64
+      args:
+        creates: /usr/local/bin/argocd
+
     - name: Install argocd
       #just apply from my kustomize config to be honest since apply is safe to do over and over either way
-      ansible.builtin.command: kubectl apply -k github.com/b-zago/box/k3s/config/argocd?ref=main
+      ansible.builtin.command: kubectl apply -k github.com/b-zago/box/k3s/config/argocd?ref=main --server-side --force-conflicts
       register: argocd_apply
       changed_when: false
 

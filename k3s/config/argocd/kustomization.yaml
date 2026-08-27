@@ -7,9 +7,3 @@ resources:
 # changes to config maps
 patches:
   - path: argocd-params.yaml
-  - patch: |-
-      $patch: delete
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: argocd-secret
