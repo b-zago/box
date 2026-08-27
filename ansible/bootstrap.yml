@@ -1,0 +1,92 @@
+- name: Install k3s server
+  hosts: server
+  become: true
+  tasks:
+    - name: Write k3s config file
+      ansible.builtin.copy:
+        dest: /etc/rancher/k3s/config.yaml
+        mode: "0600"
+        content: |
+          write-kubeconfig-mode: "0600"
+          disable:
+            - "traefik"
+            - "servicelb"
+          kube-apiserver-arg:
+            - "service-account-issuer=https://{{ s3_bucket }}.s3.{{ s3_region }}.amazonaws.com/{{ s3_key }}"
+
+    - name: Install k3s
+      ansible.builtin.shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" sh -
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Ensure k3s service is active
+      ansible.builtin.systemd:
+        name: k3s
+        state: started
+        enabled: true
+
+    - name: Wait for this node to be Ready
+      ansible.builtin.shell: kubectl get node {{ ansible_hostname }} --no-headers | awk '{print $2}'
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: node_status
+      until: node_status.stdout == "Ready"
+      retries: 30
+      delay: 5
+      changed_when: false
+
+- name: Configure OIDC
+  hosts: server
+  become: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  tasks:
+    - name: Read OIDC discovery doc
+      ansible.builtin.command: kubectl get --raw /.well-known/openid-configuration
+      register: oidc_discovery
+      changed_when: false
+
+    - name: Read JWKS
+      ansible.builtin.command: kubectl get --raw /openid/v1/jwks
+      register: oidc_jwks
+      changed_when: false
+
+    - name: Publish discovery doc
+      ansible.builtin.shell: aws s3 cp <(printf "%s\n" "{{ oidc_discovery.stdout }}") s3://{{ s3_bucket }}/{{ s3_key }}/.well-known/openid-configuration
+      delegate_to: localhost
+      become: false
+      changed_when: false
+      args:
+        executable: /bin/bash
+
+    - name: Publish JWKS
+      ansible.builtin.shell: aws s3 cp <(printf "%s\n" "{{ oidc_jwks.stdout }}") s3://{{ s3_bucket }}/{{ s3_key }}/openid/v1/jwks
+      delegate_to: localhost
+      become: false
+      changed_when: false
+      args:
+        executable: /bin/bash
+
+- name: Bootstrap argocd
+  hosts: server
+  become: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  tasks:
+    - name: Install argocd
+      #just apply from my kustomize config to be honest since apply is safe to do over and over either way
+      ansible.builtin.command: kubectl apply -k github.com/b-zago/box/k3s/config/argocd?ref=main
+      register: argocd_apply
+      changed_when: false
+
+    - name: Wait for argocd-repo-server
+      ansible.builtin.command: kubectl wait deployment/argocd-repo-server -n argocd --for=condition=Available --timeout=150s
+      changed_when: false
+
+    - name: Wait for argocd-application-controller
+      ansible.builtin.command: kubectl wait statefulset/argocd-application-controller -n argocd --for=jsonpath='{.status.readyReplicas}'=1 --timeout=150s
+      changed_when: false
+
+    - name: Apply root-app
+      ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/b-zago/box/main/k3s/root-app.yaml
+      changed_when: false

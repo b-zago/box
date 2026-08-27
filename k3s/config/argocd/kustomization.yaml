@@ -1,0 +1,15 @@
+namespace: argocd
+# additional resources like ingress rules, cluster and repository secrets.
+resources:
+  - ns.yaml
+  - github.com/argoproj/argo-cd//manifests/cluster-install?ref=v3.3.7
+
+# changes to config maps
+patches:
+  - path: argocd-params.yaml
+  - patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: argocd-secret
