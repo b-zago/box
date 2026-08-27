@@ -2,7 +2,7 @@ namespace: argocd
 # additional resources like ingress rules, cluster and repository secrets.
 resources:
   - ns.yaml
-  - https://github.com/argoproj/argo-cd/blob/v3.3.7/manifests/ha/install.yaml
+  - https://raw.githubusercontent.com/argoproj/argo-cd/v3.3.7/manifests/ha/install.yaml
 # changes to config maps
 patches:
   - path: argocd-params.yaml
