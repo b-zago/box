@@ -95,6 +95,10 @@
       register: argocd_apply
       changed_when: false
 
+    - name: Wait for argocd-server
+      ansible.builtin.command: kubectl wait deployment/argocd-server -n argocd --for=condition=Available --timeout=150s
+      changed_when: false
+
     - name: Wait for argocd-repo-server
       ansible.builtin.command: kubectl wait deployment/argocd-repo-server -n argocd --for=condition=Available --timeout=150s
       changed_when: false
