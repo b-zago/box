@@ -1,3 +1,4 @@
+# maybe later think on setting this up with support for multiple server nodes
 - name: Install k3s server
   hosts: server
   become: true

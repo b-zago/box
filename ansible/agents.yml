@@ -1,0 +1,30 @@
+- name: Install k3s agent
+  hosts: agents
+  become: true
+  tasks:
+    - name: Read node token from server
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: k3s_token_raw
+      delegate_to: "{{ groups['server'][0] }}"
+      run_once: true
+
+    - name: Install k3s agent
+      ansible.builtin.shell: curl -sfL https://get.k3s.io | sh -
+      environment:
+        K3S_URL: "https://{{ hostvars[groups['server'][0]].ansible_host }}:6443"
+        K3S_TOKEN: "{{ k3s_token_raw.content | b64decode | trim }}"
+        INSTALL_K3S_VERSION: "{{ k3s_version }}"
+      args:
+        creates: /usr/local/bin/k3s
+      no_log: true
+
+    - name: Verify agent joined
+      ansible.builtin.command: k3s kubectl get node {{ inventory_hostname }} -o json
+      delegate_to: "{{ groups['server'][0] }}"
+      become: true
+      register: node_check
+      changed_when: false
+      retries: 12
+      delay: 5
+      until: node_check.rc == 0
