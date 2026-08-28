@@ -27,7 +27,7 @@ spec:
   data:
     - secretKey: ghcr-token
       remoteRef:
-        key: clusters/config
+        key: /clusters/config
         property: data.ghcr-token
 ---
 apiVersion: external-secrets.io/v1
@@ -43,5 +43,5 @@ spec:
   data:
     - secretKey: cf-token
       remoteRef:
-        key: clusters/config
+        key: /clusters/config
         property: data.cf-token
