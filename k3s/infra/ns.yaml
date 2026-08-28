@@ -28,3 +28,10 @@ metadata:
   name: external-secrets
   labels:
     name: external-secrets
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prod
+  labels:
+    name: prod
