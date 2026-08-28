@@ -31,16 +31,16 @@ spec:
     template:
       type: kubernetes.io/dockerconfigjson
       data:
-      .dockerconfigjson: |
-        {
-          "auths": {
-            "ghcr.io": {
-              "username": "b-zago",
-              "password": "{{ .token }}",
-              "auth": "{{ printf "%s:%s" b-zago .token | b64enc }}"
+        .dockerconfigjson: |
+          {
+            "auths": {
+              "ghcr.io": {
+                "username": "b-zago",
+                "password": "{{ .token }}",
+                "auth": "{{ printf "%s:%s" b-zago .token | b64enc }}"
+              }
             }
           }
-        }
   data:
     - secretKey: token
       remoteRef:
