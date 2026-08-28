@@ -19,6 +19,9 @@
             - "servicelb"
           kube-apiserver-arg:
             - "service-account-issuer=https://{{ s3_bucket }}.s3.{{ s3_region }}.amazonaws.com/{{ s3_key }}"
+            - "service-account-jwks-uri=https://{{ s3_bucket }}.s3.{{ s3_region }}.amazonaws.com/{{ s3_key }}/openid/v1/jwks"
+
+    # restart k3s when above has changed later
 
     - name: Install k3s
       ansible.builtin.shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" sh -
@@ -81,16 +84,28 @@
       changed_when: false
 
     - name: Publish discovery doc
-      ansible.builtin.shell: printf "%s\n" "{{ oidc_discovery.stdout }}" | aws s3 cp - s3://{{ s3_bucket }}/{{ s3_key }}/.well-known/openid-configuration
+      amazon.aws.s3_object:
+        bucket: "{{ s3_bucket }}"
+        region: "{{ s3_region }}"
+        object: "{{ s3_key }}/.well-known/openid-configuration"
+        content: "{{ oidc_discovery.stdout }}"
+        mode: put
+        headers:
+          ContentType: "application/json"
       delegate_to: localhost
       become: false
-      changed_when: false
 
     - name: Publish JWKS
-      ansible.builtin.shell: printf "%s\n" "{{ oidc_jwks.stdout }}" | aws s3 cp - s3://{{ s3_bucket }}/{{ s3_key }}/openid/v1/jwks
+      amazon.aws.s3_object:
+        bucket: "{{ s3_bucket }}"
+        region: "{{ s3_region }}"
+        object: "{{ s3_key }}/openid/v1/jwks"
+        content: "{{ oidc_jwks.stdout }}"
+        mode: put
+        headers:
+          ContentType: "application/json"
       delegate_to: localhost
       become: false
-      changed_when: false
 
 - name: Bootstrap argocd
   hosts: server
