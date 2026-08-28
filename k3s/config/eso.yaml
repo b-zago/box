@@ -1,9 +1,10 @@
 apiVersion: external-secrets.io/v1
 kind: ClusterSecretStore
 metadata:
-  name: cluster-secret-store
+  name: aws-ssm
   namespace: external-secrets
 spec:
+  refreshInterval: 1h
   provider:
     aws:
       service: ParameterStore
@@ -21,11 +22,27 @@ metadata:
   namespace: prod
 spec:
   secretStoreRef:
-    name: cluster-secret-store
+    name: aws-ssm
     kind: ClusterSecretStore
   refreshPolicy: CreatedOnce
+  refreshInterval: 0s
+  target:
+    name: ghcr-creds
+    template:
+      type: kubernetes.io/dockerconfigjson
+      data:
+      .dockerconfigjson: |
+        {
+          "auths": {
+            "ghcr.io": {
+              "username": "b-zago",
+              "password": "{{ .password }}",
+              "auth": "{{ printf "%s:%s" b-zago .password | b64enc }}"
+            }
+          }
+        }
   data:
-    - secretKey: ghcr-token
+    - secretKey: password
       remoteRef:
         key: /clusters/config
         property: data.ghcr-token
@@ -37,9 +54,10 @@ metadata:
   namespace: cert-manager
 spec:
   secretStoreRef:
-    name: cluster-secret-store
+    name: aws-ssm
     kind: ClusterSecretStore
   refreshPolicy: CreatedOnce
+  refreshInterval: 0s
   data:
     - secretKey: cf-token
       remoteRef:
