@@ -37,7 +37,7 @@ spec:
               "ghcr.io": {
                 "username": "b-zago",
                 "password": "{{ .token }}",
-                "auth": "{{ printf "%s:%s" b-zago .token | b64enc }}"
+                "auth": "{{ printf "%s:%s" "b-zago" .token | b64enc }}"
               }
             }
           }
