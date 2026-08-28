@@ -18,7 +18,7 @@ spec:
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
-  name: ghcr-token
+  name: ghcr-creds
   namespace: prod
 spec:
   secretStoreRef:
