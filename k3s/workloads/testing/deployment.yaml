@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: testing
+  app: testing
+spec:
+  selector:
+    matchLabels:
+      app: testing
+  template:
+    metadata:
+      labels:
+        app: testing
+    spec:
+      imagePullSecrets:
+        - name: ghcr-creds
+      containers:
+        - name: testing
+          image: ghcr.io/b-zago/portfolio/webserver:3dba0a1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80

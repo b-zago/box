@@ -36,13 +36,13 @@ spec:
           "auths": {
             "ghcr.io": {
               "username": "b-zago",
-              "password": "{{ .password }}",
-              "auth": "{{ printf "%s:%s" b-zago .password | b64enc }}"
+              "password": "{{ .token }}",
+              "auth": "{{ printf "%s:%s" b-zago .token | b64enc }}"
             }
           }
         }
   data:
-    - secretKey: password
+    - secretKey: token
       remoteRef:
         key: /clusters/config
         property: data.ghcr-token
