@@ -4,4 +4,4 @@ metadata:
   name: argocd-rbac-cm
 data:
   policy.csv: |
-    g, b-zago, admin
+    g, b-zago, role:admin
