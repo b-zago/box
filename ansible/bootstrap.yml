@@ -18,6 +18,8 @@
           disable:
             - "traefik"
             - "servicelb"
+          tls-san:
+            - "{{ ansible_host }}"
           kube-apiserver-arg:
             - "service-account-issuer=https://{{ s3_bucket }}.s3.{{ s3_region }}.amazonaws.com/{{ s3_key }}"
             - "service-account-jwks-uri=https://{{ s3_bucket }}.s3.{{ s3_region }}.amazonaws.com/{{ s3_key }}/openid/v1/jwks"
@@ -51,6 +53,12 @@
         path: /home/{{ ansible_user }}/.bashrc
         line: "export KUBECONFIG=$HOME/.kube/config"
         create: true
+
+    - name: Fetch kubeconfig to localhost
+      ansible.builtin.fetch:
+        src: /home/{{ ansible_user }}/.kube/config
+        dest: ~/.kube/{{ ansible_hostname }}.yaml
+        flat: yes
 
     - name: Ensure k3s service is active
       ansible.builtin.systemd:
@@ -119,6 +127,11 @@
         name: git
         state: present
 
+    - name: Ensure jq is installed
+      ansible.builtin.package:
+        name: jq
+        state: present
+
     - name: Install argocd CLI
       shell: |
         VERSION=v3.3.7
@@ -130,7 +143,7 @@
 
     - name: Install argocd
       #just apply from my kustomize config to be honest since apply is safe to do over and over either way
-      ansible.builtin.command: kubectl apply -k github.com/b-zago/box/k3s/config/argocd?ref=main --server-side --force-conflicts
+      ansible.builtin.command: kubectl apply -k github.com/b-zago/box/k3s/config/argocd/base?ref=main --server-side --force-conflicts
       register: argocd_apply
       changed_when: false
 
@@ -144,6 +157,26 @@
 
     - name: Wait for argocd-application-controller
       ansible.builtin.command: kubectl wait statefulset/argocd-application-controller -n argocd --for=jsonpath='{.status.readyReplicas}'=1 --timeout=150s
+      changed_when: false
+
+    - name: Get initial password
+      ansible.builtin.command: kubectl get secret/argocd-initial-admin-secret -n argocd -o json | jq -r .data.password | base64 -d
+      register: argocd_initial_password
+      changed_when: false
+
+    - name: Login to argocd as default admin
+      ansible.builtin.command: echo -n "{{ argocd_initial_password }}" | argocd login 10.10.10.241 --username admin --password -
+      when: argocd_initial_password.stdout != ""
+      changed_when: false
+
+    - name: Change argocd user password
+      ansible.builtin.command: echo -n "{{ argocd_password }}" | argocd account update-password --account "{{ argocd_username }}" --current-password "{{ argocd_initial_password }}" --new-password -
+      when: argocd_initial_password.stdout != ""
+      changed_when: false
+
+    - name: Delete argocd-initial-admin-secret
+      ansible.builtin.command: kubectl delete secret/argocd-initial-admin-secret -n argocd
+      when: argocd_initial_password.stdout != ""
       changed_when: false
 
     - name: Apply root-app
