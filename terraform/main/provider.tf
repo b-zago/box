@@ -11,9 +11,14 @@ terraform {
 provider "proxmox" {
   endpoint  = var.endpoint
   api_token = var.api_token
+  insecure  = true
 
   ssh {
     agent    = true
     username = var.username
+    node {
+      name    = "pve"
+      address = var.pve_ip
+    }
   }
 }

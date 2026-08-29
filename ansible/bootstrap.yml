@@ -147,30 +147,50 @@
       register: argocd_apply
       changed_when: false
 
-    - name: Wait for argocd-server
-      ansible.builtin.command: kubectl wait deployment/argocd-server -n argocd --for=jsonpath='{.status.readyReplicas}'=1 --timeout=150s
-      changed_when: false
-
-    - name: Wait for argocd-repo-server
-      ansible.builtin.command: kubectl wait deployment/argocd-repo-server -n argocd --for=jsonpath='{.status.readyReplicas}'=1 --timeout=150s
+    - name: Wait for argocd to be Ready
+      ansible.builtin.shell: echo "$(kubectl get deployment/argocd-server -n argocd -o json | jq .status.readyReplicas):$(kubectl get deployment/argocd-repo-server -n argocd -o json | jq .status.readyReplicas)"
+      register: argocd_status
+      vars:
+        argocd_status_parts: "{{ argocd_status.stdout.split(':') }}"
+      until: argocd_status_parts[0] | int >= 1 and argocd_status_parts[1] | int >= 1
+      retries: 30
+      delay: 5
       changed_when: false
 
     - name: Wait for argocd-application-controller
       ansible.builtin.command: kubectl wait statefulset/argocd-application-controller -n argocd --for=jsonpath='{.status.readyReplicas}'=1 --timeout=150s
       changed_when: false
 
+    - name: Apply infra-app
+      ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/b-zago/box/main/k3s/infra-app.yaml
+      changed_when: false
+
+    - name: Apply MetalLB config
+      ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/b-zago/box/main/k3s/config/metallb.yaml
+      changed_when: false
+
+    - name: Wait for argocd-server to pick up IP from MetalLB - testing connection
+      ansible.builtin.wait_for:
+        host: 10.10.10.241
+        port: 443
+        state: started
+        delay: 5
+        timeout: 300
+
     - name: Get initial password
-      ansible.builtin.command: kubectl get secret/argocd-initial-admin-secret -n argocd -o json | jq -r .data.password | base64 -d
+      ansible.builtin.shell: kubectl get secret/argocd-initial-admin-secret -n argocd -o json | jq -r .data.password | base64 -d
       register: argocd_initial_password
       changed_when: false
 
+      #better failure checks below for argo user setup
+
     - name: Login to argocd as default admin
-      ansible.builtin.command: echo -n "{{ argocd_initial_password }}" | argocd login 10.10.10.241 --username admin --password -
+      ansible.builtin.shell: echo -n "{{ argocd_initial_password }}" | argocd login 10.10.10.241 --username admin --password -
       when: argocd_initial_password.stdout != ""
       changed_when: false
 
     - name: Change argocd user password
-      ansible.builtin.command: echo -n "{{ argocd_password }}" | argocd account update-password --account "{{ argocd_username }}" --current-password "{{ argocd_initial_password }}" --new-password -
+      ansible.builtin.shell: echo -n "{{ argocd_password }}" | argocd account update-password --account "{{ argocd_username }}" --current-password "{{ argocd_initial_password }}" --new-password -
       when: argocd_initial_password.stdout != ""
       changed_when: false
 

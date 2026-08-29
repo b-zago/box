@@ -11,3 +11,7 @@ variable "username" {
   description = "Username to use with ssh"
 
 }
+
+variable "pve_ip" {
+  type = string
+}
