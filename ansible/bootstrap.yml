@@ -116,6 +116,39 @@
       delegate_to: localhost
       become: false
 
+- name: Setup own trusted CA
+  hosts: server
+  become: true
+  tasks:
+    - name: Check if CA present
+      ansible.builtin.shell: test -f /usr/local/share/ca-certificates/ca.crt && echo "exists" || echo "not found"
+      register: cert_exists
+      changed_when: false
+
+    - name: Get object from S3 bucket
+      amazon.aws.s3_object:
+        bucket: "{{ ca_bucket }}"
+        object: "{{ ca_cert_path }}"
+        dest: /tmp/k3s-ca.crt
+        mode: get
+        overwrite: different
+      delegate_to: localhost
+      become: false
+      when: cert_exists.stdout == "not found"
+
+    - name: Copy local file to remote
+      ansible.builtin.copy:
+        src: /tmp/k3s-ca.crt
+        dest: /usr/local/share/ca-certificates/ca.crt
+        owner: root
+        group: root
+        mode: "0644"
+      when: cert_exists.stdout == "not found"
+
+    - name: Update CA certificates
+      ansible.builtin.command: update-ca-certificates
+      when: cert_exists.stdout == "not found"
+
 - name: Bootstrap argocd
   hosts: server
   become: true
