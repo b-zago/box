@@ -162,7 +162,11 @@
       changed_when: false
 
     - name: Apply infra-app
-      ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/b-zago/box/main/k3s/infra-app.yaml
+      ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/b-zago/box/main/k3s/infra.yaml
+      changed_when: false
+
+    - name: Wait for MetalLB
+      ansible.builtin.command: kubectl wait deployment/metallb-controller -n metallb-system --for=jsonpath='{.status.readyReplicas}'=1 --timeout=150s
       changed_when: false
 
     - name: Apply MetalLB config
@@ -185,12 +189,32 @@
       #better failure checks below for argo user setup
 
     - name: Login to argocd as default admin
-      ansible.builtin.shell: echo -n "{{ argocd_initial_password }}" | argocd login 10.10.10.241 --username admin --password -
+      ansible.builtin.command:
+        argv:
+          - argocd
+          - login
+          - 10.10.10.241
+          - --insecure #insecure is fine since argo wont have external access either way, maybe will change later tho
+          - --username
+          - admin
+          - --password
+          - "{{ argocd_initial_password.stdout }}"
       when: argocd_initial_password.stdout != ""
       changed_when: false
+      no_log: true
 
     - name: Change argocd user password
-      ansible.builtin.shell: echo -n "{{ argocd_password }}" | argocd account update-password --account "{{ argocd_username }}" --current-password "{{ argocd_initial_password }}" --new-password -
+      ansible.builtin.command:
+        argv:
+          - argocd
+          - account
+          - update-password
+          - --account
+          - "{{ argocd_username }}"
+          - --current-password
+          - "{{ argocd_initial_password.stdout }}"
+          - --new-password
+          - "{{ argocd_password }}"
       when: argocd_initial_password.stdout != ""
       changed_when: false
 
