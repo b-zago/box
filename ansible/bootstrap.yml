@@ -134,7 +134,7 @@
         overwrite: different
       delegate_to: localhost
       become: false
-      when: cert_exists.stdout == "not found"
+      when: cert_exists.stdout == "not found" or force_ca_config
 
     - name: Copy local file to remote
       ansible.builtin.copy:
@@ -143,11 +143,11 @@
         owner: root
         group: root
         mode: "0644"
-      when: cert_exists.stdout == "not found"
+      when: cert_exists.stdout == "not found" or force_ca_config
 
     - name: Update CA certificates
       ansible.builtin.command: update-ca-certificates
-      when: cert_exists.stdout == "not found"
+      when: cert_exists.stdout == "not found" or force_ca_config
 
 - name: Bootstrap argocd
   hosts: server

@@ -1,9 +1,9 @@
-#Update trust certs
+# Update trust certs
 
-##Fedora / RHEL
+## Fedora / RHEL
 
 sudo cp ca.crt /etc/pki/ca-trust/source/anchors/ && update-ca-trust extract
 
-##Debian / Ubuntu
+## Debian / Ubuntu
 
 sudo cp ca.crt /usr/local/share/ca-certificates/ && update-ca-certificates

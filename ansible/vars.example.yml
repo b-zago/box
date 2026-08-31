@@ -3,3 +3,5 @@ argocd_username: EXAMPLE_ARGOCD_USERNAME
 
 ca_bucket: EXAMPLE_CA_BUCKET
 ca_cert_path: EXAMPLE_CA_PATH
+
+force_ca_config: false
