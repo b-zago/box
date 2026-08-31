@@ -73,6 +73,8 @@ spec:
   secretStoreRef:
     name: aws-ssm
     kind: ClusterSecretStore
+  refreshPolicy: CreatedOnce
+  refreshInterval: 0s
   target:
     name: argocd-server-tls
     template:
