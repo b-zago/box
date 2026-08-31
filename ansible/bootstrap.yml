@@ -60,6 +60,21 @@
         dest: ~/.kube/{{ ansible_hostname }}.yaml
         flat: yes
 
+    - name: Set permissions on fetched kubeconfig
+      ansible.builtin.file:
+        path: ~/.kube/{{ ansible_hostname }}.yaml
+        mode: "0600"
+      delegate_to: localhost
+      become: false
+
+    - name: Edit with correct IP
+      ansible.builtin.replace:
+        path: ~/.kube/{{ ansible_hostname }}.yaml
+        regexp: '127\.0\.0\.1'
+        replace: "{{ ansible_host }}"
+      delegate_to: localhost
+      become: false
+
     - name: Ensure k3s service is active
       ansible.builtin.systemd:
         name: k3s
