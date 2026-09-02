@@ -1,0 +1,4 @@
+resources:
+  - workloads.yaml
+  - infra.yaml
+  - config.yaml

@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/b-zago/box
     targetRevision: HEAD
-    path: k3s/
+    path: k3s/overlays/staging
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

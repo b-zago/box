@@ -3,4 +3,4 @@ kind: ConfigMap
 metadata:
   name: argocd-cm
 data:
-  accounts.b-zago: apiKey, login
+  accounts.box: apiKey, login

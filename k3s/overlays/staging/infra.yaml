@@ -1,8 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: argocd-app
+  name: infra-app
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -10,7 +12,7 @@ spec:
   source:
     repoURL: https://github.com/b-zago/box
     targetRevision: HEAD
-    path: k3s/config/argocd/overlays/config
+    path: k3s/overlays/staging/infra
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
@@ -18,5 +20,3 @@ spec:
     automated:
       prune: true
       selfHeal: true
-    syncOptions:
-      - ServerSideApply=true

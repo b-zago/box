@@ -4,4 +4,6 @@ metadata:
   name: argocd-rbac-cm
 data:
   policy.csv: |
-    g, b-zago, role:admin
+    g, box, role:admin
+
+#can add additional rbac for staging here
