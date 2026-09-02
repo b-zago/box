@@ -7,3 +7,5 @@ resources:
 patches:
   - path: argocd-install-app.yaml
   - path: metallb.yaml
+  - path: gateway.yaml
+  - path: cert-manager.yaml
