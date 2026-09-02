@@ -223,7 +223,7 @@
 
     - name: Wait for argocd-server to pick up IP from MetalLB - testing connection
       ansible.builtin.wait_for:
-        host: 10.10.10.241
+        host: 10.11.0.241
         port: 443
         state: started
         delay: 5

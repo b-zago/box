@@ -4,4 +4,4 @@ metadata:
   name: argocd-server
 spec:
   type: LoadBalancer
-  loadBalancerIP: 10.10.10.241
+  loadBalancerIP: 10.11.0.241
