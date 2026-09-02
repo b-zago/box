@@ -19,7 +19,7 @@ apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: ghcr-creds
-  namespace: prod
+  namespace: staging
 spec:
   secretStoreRef:
     name: aws-ssm

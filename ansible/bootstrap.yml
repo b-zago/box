@@ -131,6 +131,7 @@
       delegate_to: localhost
       become: false
 
+#sign for specified ip later
 - name: Setup own trusted CA
   hosts: server
   become: true
@@ -241,7 +242,7 @@
         argv:
           - argocd
           - login
-          - 10.10.10.241
+          - 10.11.0.241
           - --insecure #insecure is fine since argo wont have external access either way, maybe will change later tho
           - --username
           - admin
