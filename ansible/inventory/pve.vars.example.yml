@@ -1,0 +1,32 @@
+pve_default_role: Administrator
+pve_user: terraform@pve
+pve_token_id: provider
+
+bridge_name: vmbr0
+bridge_ports: none
+uplink_bridge: vmbr0
+
+portforward_rules:
+  - pub_port: 80
+    proto: tcp
+    dest_ip: 10.10.10.240
+    dest_port: 80
+    comment: HTTP
+  - pub_port: 443
+    proto: tcp
+    dest_ip: 10.10.10.240
+    dest_port: 443
+    comment: HTTPS
+
+ebs_id: vol0123456789abcdef # substring matched in /dev/disk/by-id/
+s3_ca_path: s3://my-bucket/ca # positional arg to ./ca/sign-cert.sh
+ca_cn: "homelab-ca" # must appear in the cert issuer line
+
+bridge_address: 10.10.0.1/24
+bridge_subnet: 10.10.0.0/24 # must contain bridge_address
+
+wg_iface: wg0
+wg_port: 51820
+wg_address: 10.99.0.1/24 # must not overlap bridge_subnet
+client_pubkey: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx="
+client_allowed_ips: 10.99.0.2/32

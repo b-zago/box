@@ -1,0 +1,11 @@
+auto {{ bridge_name }}
+iface {{ bridge_name }} inet static
+    address {{ bridge_address }}
+    bridge-ports {{ bridge_ports }}
+    bridge-stp off
+    bridge-fd 0
+    post-up   echo 1 > /proc/sys/net/ipv4/ip_forward
+    post-up   iptables -t nat -A POSTROUTING -s '{{ bridge_subnet }}' -o {{ ansible_default_ipv4.interface }} -j MASQUERADE
+    post-down iptables -t nat -D POSTROUTING -s '{{ bridge_subnet }}' -o {{ ansible_default_ipv4.interface }} -j MASQUERADE
+    post-up /etc/iptables.sh
+    post-down /etc/iptables.sh down

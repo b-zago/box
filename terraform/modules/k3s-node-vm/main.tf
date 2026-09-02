@@ -61,6 +61,10 @@ resource "proxmox_virtual_environment_vm" "this" {
   initialization {
     datastore_id = var.vm_datastore_id
 
+    dns {
+      servers = ["1.1.1.1", "8.8.8.8"]
+    }
+
     ip_config {
       ipv4 {
         address = var.ipv4_address

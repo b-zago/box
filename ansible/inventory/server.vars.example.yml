@@ -1,3 +1,5 @@
+# place it inside inventory/group_vars/server
+
 argocd_password: EXAMPLE_ARGOCD_PASSWORD
 argocd_username: EXAMPLE_ARGOCD_USERNAME
 

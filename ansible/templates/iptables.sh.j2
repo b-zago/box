@@ -1,0 +1,23 @@
+#!/bin/bash
+# /etc/iptables-portforwards.sh
+# Managed by Ansible - do not edit directly
+# Usage: called with no args (or "up") to add rules, "down" to remove them
+ACTION=${1:-up}
+PUB_IF="{{ ansible_default_ipv4.interface }}"
+
+# Format: PUBLIC_PORT:PROTO:TARGET_IP:TARGET_PORT
+RULES=(
+{% for rule in portforward_rules %}
+  "{{ rule.pub_port }}:{{ rule.proto }}:{{ rule.dest_ip }}:{{ rule.dest_port }}"{% if rule.comment is defined %}   # {{ rule.comment }}{% endif %}
+
+{% endfor %}
+)
+
+for rule in "${RULES[@]}"; do
+  IFS=':' read -r pub_port proto dest_ip dest_port <<< "$rule"
+  if [ "$ACTION" = "down" ]; then
+    iptables -t nat -D PREROUTING -i "$PUB_IF" -p "$proto" --dport "$pub_port" -j DNAT --to-destination "$dest_ip:$dest_port"
+  else
+    iptables -t nat -A PREROUTING -i "$PUB_IF" -p "$proto" --dport "$pub_port" -j DNAT --to-destination "$dest_ip:$dest_port"
+  fi
+done

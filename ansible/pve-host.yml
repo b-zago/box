@@ -1,7 +1,7 @@
 - name: Install proxmox
   become: true
-  hosts: pve
-  pre-tasks:
+  hosts: pve-servers
+  pre_tasks:
     - name: Check whether Proxmox VE is already running
       ansible.builtin.command: systemctl is-active pve-cluster pvedaemon pveproxy
       register: pve_active
@@ -27,17 +27,8 @@
     - name: Fail if the hostname only resolves to a loopback address
       ansible.builtin.assert:
         that:
-          - pve_hostname_ip.stdout.find('"{{ ansible_host }}"') != -1
+          - ansible_default_ipv4.address in pve_hostname_ip.stdout.split()
         fail_msg: "hostname --ip-address returned only loopback addresses: {{ pve_hostname_ip.stdout }}"
-
-    - name: Install the Proxmox VE archive keyring
-      ansible.builtin.get_url:
-        url: "{{ pve_keyring_url }}"
-        dest: "{{ pve_keyring }}"
-        checksum: "sha256:{{ pve_keyring_sha256 }}"
-        owner: root
-        group: root
-        mode: "0644"
 
     - name: Add the Proxmox VE no-subscription repository
       ansible.builtin.copy:
@@ -52,10 +43,44 @@
           Components: {{ pve_component }}
           Signed-By: {{ pve_keyring }}
 
+    - name: Install the Proxmox VE archive keyring
+      ansible.builtin.get_url:
+        url: "{{ pve_keyring_url }}"
+        dest: "{{ pve_keyring }}"
+        checksum: "sha256:{{ pve_keyring_sha256 }}"
+        owner: root
+        group: root
+        mode: "0644"
+
     - name: Update apt cache and upgrade the base system
       ansible.builtin.apt:
         update_cache: true
         upgrade: full
+
+    - name: Ensure jq is installed
+      ansible.builtin.package:
+        name: jq
+        state: present
+
+    - name: Ensure debconf-utils is present
+      ansible.builtin.apt:
+        name: debconf-utils
+        state: present
+
+    - name: Preseed grub-pc install device
+      ansible.builtin.debconf:
+        name: grub-pc
+        question: grub-pc/install_devices
+        vtype: multiselect
+        value: "/dev/disk/by-id/{{ root_disk_id }}"
+      vars:
+        root_disk: >-
+          {{ ansible_mounts | selectattr('mount','eq','/') | map(attribute='device') | first
+             | regex_replace('^/dev/','') | regex_replace('p?[0-9]+$','') }}
+        root_disk_id: >-
+          {{ ansible_devices[root_disk].links.ids
+             | reject('match','nvme-eui\.')
+             | first }}
 
     - name: Install the Proxmox VE kernel
       ansible.builtin.apt:
@@ -66,13 +91,41 @@
     - name: Reboot into the Proxmox VE kernel
       ansible.builtin.reboot:
         reboot_timeout: 900
-      when: pve_kernel.changed
+      when: pve_kernel.changed or ansible_kernel is not search('pve')
+
+    - name: Preseed postfix configuration
+      ansible.builtin.debconf:
+        name: postfix
+        question: "{{ item.question }}"
+        vtype: "{{ item.vtype }}"
+        value: "{{ item.value }}"
+      loop:
+        - question: postfix/main_mailer_type
+          vtype: select
+          value: "Local only"
+        - question: postfix/mailname
+          vtype: string
+          value: "{{ ansible_fqdn }}"
 
     - name: Install the Proxmox VE packages
       ansible.builtin.apt:
         name: "{{ pve_packages }}"
         state: present
         update_cache: true
+
+    - name: Disable the Proxmox enterprise repository
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/pve-enterprise.sources
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          Types: deb
+          URIs: https://enterprise.proxmox.com/debian/pve
+          Suites: {{ pve_suite }}
+          Components: pve-enterprise
+          Signed-By: {{ pve_keyring }}
+          Enabled: false
 
     - name: Remove linux-image packages
       ansible.builtin.apt:
@@ -90,3 +143,268 @@
   handlers:
     - name: update grub
       ansible.builtin.command: update-grub
+
+- name: Configure terraform user
+  become: true
+  hosts: pve-servers
+  tasks:
+    - name: Run pveum script
+      ansible.builtin.script: pveum.sh "{{ pve_user }}" "{{ pve_default_role }}" "{{ pve_token_id }}"
+      register: pve_token
+      args:
+        executable: /bin/bash
+      changed_when: pve_token.stdout | trim != ''
+      no_log: true
+
+- name: Configure LVM
+  become: true
+  hosts: pve
+  tasks:
+    - name: Ensure lvm2 installed
+      ansible.builtin.apt:
+        name: lvm2
+        state: present
+        update_cache: true
+
+    - name: Resolve device
+      ansible.builtin.shell: readlink -f /dev/disk/by-id/$(ls /dev/disk/by-id/ | grep "{{ ebs_id }}" | head -1)
+      register: dev
+      changed_when: false
+
+    - name: Check if already a PV
+      ansible.builtin.command: "pvs --noheadings -o pv_name {{ dev.stdout }}"
+      register: pv_check
+      changed_when: false
+      failed_when: false
+
+    - name: pvcreate
+      ansible.builtin.command: "pvcreate {{ dev.stdout }}"
+      when: pv_check.rc != 0
+
+    - name: vgcreate
+      ansible.builtin.command: "vgcreate vg0 {{ dev.stdout }}"
+      args:
+        creates: /dev/vg0
+
+    - name: lvcreate
+      ansible.builtin.command: "lvcreate -l 100%FREE --thinpool data vg0"
+      args:
+        creates: /dev/vg0/data
+
+- name: Configure TLS
+  become: true
+  hosts: pve-servers
+  pre_tasks:
+    - name: Check current CA by issuer
+      ansible.builtin.shell: openssl s_client -connect localhost:8006 -showcerts </dev/null 2>/dev/null | openssl x509 -noout -issuer
+      register: ca_issuer
+      changed_when: false
+
+    - name: End the play for this host
+      ansible.builtin.meta: end_host
+      when: ca_cn in ca_issuer.stdout
+
+  tasks:
+    - name: Generate keys
+      ansible.builtin.command: ./ca/sign-cert.sh -s "{{ wg_address | split('/') | first }}" "{{ s3_ca_path }}"
+      changed_when: false
+      become: false
+      delegate_to: localhost
+
+    - name: Stage certificate on the target
+      ansible.builtin.copy:
+        src: ./tls.crt
+        dest: /root/pveproxy-ssl.pem
+        owner: root
+        group: root
+        mode: "0640"
+      register: staged_crt
+
+    - name: Stage private key on the target
+      ansible.builtin.copy:
+        src: ./tls.key
+        dest: /root/pveproxy-ssl.key
+        owner: root
+        group: root
+        mode: "0600"
+      register: staged_key
+
+    - name: Install certificate into pmxcfs
+      ansible.builtin.command: cp /root/pveproxy-ssl.pem /etc/pve/local/pveproxy-ssl.pem
+      when: staged_crt.changed
+
+    - name: Install private key into pmxcfs
+      ansible.builtin.command: cp /root/pveproxy-ssl.key /etc/pve/local/pveproxy-ssl.key
+      when: staged_key.changed
+      notify: restart pveproxy
+
+  handlers:
+    - name: restart pveproxy
+      ansible.builtin.systemd:
+        name: pveproxy
+        state: restarted
+
+- name: Configure network
+  become: true
+  hosts: pve-servers
+  tasks:
+    - name: Ensure ifupdown2 is installed
+      ansible.builtin.apt:
+        name: ifupdown2
+        state: present
+
+    - name: Deploy port-forward script
+      ansible.builtin.template:
+        src: iptables.sh.j2
+        dest: /etc/iptables.sh
+        owner: root
+        group: root
+        mode: "0700"
+      notify: reload networking
+
+    - name: Edit etc/network/interfaces
+      ansible.builtin.blockinfile:
+        path: /etc/network/interfaces
+        create: true
+        mode: "0644"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - {{ bridge_name }}"
+        block: "{{ lookup('template', 'vmbr0.j2') }}"
+      notify: reload networking
+
+    - name: Ensure networking.service has run
+      ansible.builtin.systemd:
+        name: networking
+        state: started
+        enabled: true
+
+  handlers:
+    - name: reload networking
+      ansible.builtin.command: ifreload -a
+      register: ifup_result
+      until: ifup_result.rc == 0
+      retries: 10
+      delay: 3
+      changed_when: true
+
+- name: Install wireguard
+  hosts: pve-servers
+  become: true
+  tasks:
+    - name: Install wireguard
+      ansible.builtin.apt:
+        name: wireguard
+        state: present
+        update_cache: true
+
+    - name: Ensure /etc/wireguard exists
+      ansible.builtin.file:
+        path: /etc/wireguard
+        state: directory
+        mode: "0700"
+
+    - name: Generate server private key
+      ansible.builtin.shell: umask 077 && wg genkey > /etc/wireguard/server.key
+      args:
+        creates: /etc/wireguard/server.key
+
+    - name: Generate server public key
+      ansible.builtin.shell: wg pubkey < /etc/wireguard/server.key > /etc/wireguard/server.pub
+      args:
+        creates: /etc/wireguard/server.pub
+
+    - name: Read server private key
+      ansible.builtin.slurp:
+        src: /etc/wireguard/server.key
+      register: server_privkey_raw
+
+    - name: Read server public key
+      ansible.builtin.slurp:
+        src: /etc/wireguard/server.pub
+      register: server_pubkey_raw
+
+    - name: Deploy wg0.conf
+      ansible.builtin.template:
+        src: wg0.conf.j2
+        dest: /etc/wireguard/wg0.conf
+        owner: root
+        group: root
+        mode: "0600"
+      vars:
+        server_privkey: "{{ server_privkey_raw.content | b64decode | trim }}"
+      notify: restart wireguard
+
+    - name: Ensure wireguard is enabled and running
+      ansible.builtin.systemd:
+        name: wg-quick@wg0
+        state: started
+        enabled: true
+
+  handlers:
+    - name: restart wireguard
+      ansible.builtin.systemd:
+        name: wg-quick@wg0
+        state: restarted
+        enabled: true
+
+- name: Configure firewall
+  hosts: pve-servers
+  become: true
+  tasks:
+    - name: Ensure ufw is installed
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+        update_cache: true
+
+    - name: Set default incoming policy to deny
+      community.general.ufw:
+        direction: incoming
+        policy: deny
+
+    - name: Set default outgoing policy to allow
+      community.general.ufw:
+        direction: outgoing
+        policy: allow
+
+    - name: Set default routed policy to allow
+      community.general.ufw:
+        direction: routed
+        policy: allow
+
+    - name: Allow WireGuard port
+      community.general.ufw:
+        rule: allow
+        port: "51820"
+        proto: udp
+
+    - name: Allow SSH over wg0
+      community.general.ufw:
+        rule: allow
+        interface: wg0
+        direction: in
+        port: "22"
+
+    - name: Allow Proxmox web UI over wg0
+      community.general.ufw:
+        rule: allow
+        interface: wg0
+        direction: in
+        port: "8006"
+
+    - name: Enable ufw
+      community.general.ufw:
+        state: enabled
+
+- name: Write results
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Write results
+      ansible.builtin.copy:
+        content: "{{ {
+          'hostname': hostvars['pve']['ansible_hostname'],
+          'wg_pub': hostvars['pve']['server_pubkey_raw']['content'] | b64decode | trim,
+          'pve_token': hostvars['pve']['pve_token']['stdout'] | trim
+          } | to_nice_json }}\n"
+        dest: "{{ playbook_dir }}/fetched/pve/results.json"
+        mode: "0600"

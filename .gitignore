@@ -3,3 +3,8 @@
 *.pub
 .terraform/
 vars.yml
+
+tls.crt
+tls.key
+
+results.json
