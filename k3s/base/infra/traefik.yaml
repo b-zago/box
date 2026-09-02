@@ -25,7 +25,7 @@ spec:
             enabled: true
         service:
           spec:
-            loadBalancerIP: "10.10.10.240"
+            loadBalancerIP: "10.11.0.240"
   destination:
     server: https://kubernetes.default.svc
     namespace: traefik
