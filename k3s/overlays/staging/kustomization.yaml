@@ -7,4 +7,6 @@ resources:
   - ns.yaml
 
 patches:
-  - path: ./config/argocd-install-app.yaml
+  - path: config.yaml
+  - path: infra.yaml
+  - path: workloads.yaml
