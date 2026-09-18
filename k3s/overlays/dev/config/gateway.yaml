@@ -3,9 +3,30 @@ kind: Gateway
 metadata:
   name: dev-gateway
   namespace: dev
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
 spec:
+  gatewayClassName: traefik
   listeners:
     - name: websecure
       hostname: "*.pve.zagoapps.com"
+      port: 8443
+      protocol: HTTPS
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: zagoapps-com-tls
     - name: websecure-apex
       hostname: "pve.zagoapps.com"
+      port: 8443
+      protocol: HTTPS
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: zagoapps-com-apex-tls
