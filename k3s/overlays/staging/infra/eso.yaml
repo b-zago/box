@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-secrets
+  namespace: argocd
+spec:
+  source:
+    repoURL: https://charts.external-secrets.io
+    chart: external-secrets
+    targetRevision: 2.9.0
+    helm:
+      values: |
+        serviceAccount:
+          name: external-secrets
+          annotations:
+            eks.amazonaws.com/role-arn: arn:aws:iam::879816410795:role/metal_staging_role

@@ -3,6 +3,7 @@
 *.pub
 .terraform/
 vars.yml
+backend.hcl
 
 tls.crt
 tls.key

@@ -24,8 +24,6 @@
             - "service-account-issuer=https://{{ s3_bucket }}.s3.{{ s3_region }}.amazonaws.com/{{ s3_key }}"
             - "service-account-jwks-uri=https://{{ s3_bucket }}.s3.{{ s3_region }}.amazonaws.com/{{ s3_key }}/openid/v1/jwks"
 
-    # restart k3s when above has changed later
-
     - name: Install k3s
       ansible.builtin.shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" sh -
       args:
@@ -131,11 +129,58 @@
       delegate_to: localhost
       become: false
 
-#sign for specified ip later
+- name: Setup OIDC on AWS side via terraform
+  hosts: localhost
+  tasks:
+    - name: Read existing tfvars
+      ansible.builtin.slurp:
+        src: ../terraform/aws/oidc/terraform.tfvars.json
+      register: raw_json
+
+    - name: Parse JSON and append if missing
+      ansible.builtin.set_fact:
+        updated_list: "{{ (raw_json.content | b64decode | from_json).clusters | union([env]) }}"
+
+    - name: Write updated list back
+      ansible.builtin.copy:
+        content: "{{ (raw_json.content | b64decode | from_json) | combine({'clusters': updated_list}) | to_nice_json }}"
+        dest: ../terraform/aws/oidc/terraform.tfvars.json
+
+    - name: Run terraform
+      community.general.terraform:
+        project_path: ../terraform/aws/oidc/
+        state: present
+        force_init: true
+      register: tf_output
+
+    - name: Git pull
+      ansible.builtin.command:
+        cmd: git pull origin main
+        chdir: ../terraform/aws/oidc/
+      changed_when: false
+
+    - name: Check for new/untracked files
+      ansible.builtin.command:
+        cmd: git status --porcelain .
+        chdir: ../terraform/aws/oidc/
+      register: git_status
+      changed_when: false
+
+    - name: Commit and push changes to aws oidc
+      ansible.builtin.command:
+        cmd: git add "../terraform/aws/oidc/" && git commit -m "AWS OIDC changes" && git push origin main
+      when: git_status.stdout | length > 0
+      changed_when: false
+
 - name: Setup own trusted CA
   hosts: server
   become: true
   tasks:
+    - name: Sign and upload to SSM tls for argocd
+      ansible.builtin.command: ./ca/sign-cert.sh "{{ argocd_ip }}" "{{ ca_bucket }}/{{ ca_cert_path }}" argocd "{{ env }}"
+      become: false
+      delegate_to: localhost
+
     - name: Check if CA present
       ansible.builtin.shell: test -f /usr/local/share/ca-certificates/ca.crt && echo "exists" || echo "not found"
       register: cert_exists
@@ -181,6 +226,45 @@
         name: jq
         state: present
 
+    - name: Generate cluster manifests
+      ansible.builtin.command: ./files/cluster-overlay.sh
+      args:
+        creates: ../k3s/overlays/{{ env }}
+      environment:
+        ENV: "{{ env }}"
+        ARGOCD_IP: "{{ argocd_ip }}"
+        DOMAIN: "{{ domain }}"
+        TRAEFIK_IP: "{{ traefik_ip }}"
+        ESO_ROLE_ARN: "{{ tf_output.providers.value[env] }}"
+        METALLB-POOL: "{{ metallb_pool }}"
+      become: false
+      delegate_to: localhost
+
+    - name: Git pull
+      ansible.builtin.command:
+        cmd: git pull origin main
+        chdir: ../k3s/overlays/
+      changed_when: false
+      delegate_to: localhost
+      become: false
+
+    - name: Check for new/untracked files
+      ansible.builtin.command:
+        cmd: git status --porcelain .
+        chdir: "../k3s/overlays/"
+      register: git_status
+      changed_when: false
+      become: false
+      delegate_to: localhost
+
+    - name: Commit and push new cluster manifests
+      ansible.builtin.command:
+        cmd: git add "../k3s/overlays/{{ env }}" && git commit -m "Generated cluster {{ env }}" && git push origin main
+      when: git_status.stdout | length > 0
+      changed_when: false
+      delegate_to: localhost
+      become: false
+
     - name: Install argocd CLI
       shell: |
         VERSION=v3.3.7
@@ -210,8 +294,12 @@
       ansible.builtin.command: kubectl wait statefulset/argocd-application-controller -n argocd --for=jsonpath='{.status.readyReplicas}'=1 --timeout=150s
       changed_when: false
 
+    - name: Apply argocd server patch
+      ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/b-zago/box/main/k3s/overlays/{{ env }}/config/argocd/argocd-server.yaml
+      changed_when: false
+
     - name: Apply infra-app
-      ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/b-zago/box/main/k3s/overlays/staging/infra.yaml
+      ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/b-zago/box/main/k3s/overlays/{{ env }}/infra.yaml
       changed_when: false
 
     - name: Wait for MetalLB
@@ -219,7 +307,7 @@
       changed_when: false
 
     - name: Apply MetalLB config
-      ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/b-zago/box/main/k3s/overlays/staging/config/metallb.yaml
+      ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/b-zago/box/main/k3s/overlays/{{ env }}/config/metallb.yaml
       changed_when: false
 
     - name: Wait for argocd-server to pick up IP from MetalLB - testing connection
@@ -235,15 +323,13 @@
       register: argocd_initial_password
       changed_when: false
 
-      #better failure checks below for argo user setup
-
     - name: Login to argocd as default admin
       ansible.builtin.command:
         argv:
           - argocd
           - login
           - 10.11.0.241
-          - --insecure #insecure is fine since argo wont have external access either way, maybe will change later tho
+          - --insecure #insecure is fine since argo wont have external access either way
           - --username
           - admin
           - --password

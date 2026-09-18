@@ -1,3 +1,28 @@
+locals {
+  server_host = {
+    name = module.k3s-server.hostname
+    ip   = split("/", module.k3s-server.ipv4_address)[0]
+  }
+
+  agent_hosts = [
+    for i, m in module.node_vm : {
+      name = m.hostname
+      ip   = split("/", m.ipv4_address)[0]
+    }
+  ]
+}
+
+resource "local_file" "k3s_inventory" {
+  content = templatefile("${path.module}/templates/k3s_inventory.tpl", {
+    server_name = local.server_host.name
+    server_ip   = local.server_host.ip
+    agents      = local.agent_hosts
+  })
+
+  filename = "${path.module}/../../../ansible/inventory/k3s_generated.ini"
+}
+
+
 ###--- MINECRAFT FOR NOW ---###
 resource "proxmox_download_file" "debian13" {
   content_type = "import"
@@ -87,3 +112,5 @@ module "node_vm" {
   vm_name          = "k3s-agent-${count.index + 1}"
   download_file_id = proxmox_download_file.debian13.id
 }
+
+

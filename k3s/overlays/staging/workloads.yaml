@@ -4,8 +4,6 @@ metadata:
   name: workloads
   namespace: argocd
 spec:
-  goTemplate: true
-  goTemplateOptions: ["missingkey=error"]
   generators:
     - git:
         repoURL: https://github.com/b-zago/box
@@ -15,26 +13,6 @@ spec:
   template:
     metadata:
       name: "{{.path.basename}}"
-      namespace: argocd
-      finalizers:
-        - resources-finalizer.argocd.argoproj.io
     spec:
-      project: default
-      source:
-        repoURL: https://github.com/b-zago/box
-        targetRevision: HEAD
-        path: "{{.path.path}}"
       destination:
-        server: https://kubernetes.default.svc
         namespace: staging
-      syncPolicy:
-        automated:
-          prune: true
-          selfHeal: true
-        retry: #so it won't hang in outofsync state when something turns out to be broken
-          refresh: true
-          limit: 5
-          backoff:
-            duration: 15s
-            factor: 2
-            maxDuration: 3m

@@ -3,20 +3,6 @@ kind: Application
 metadata:
   name: config-app
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "-1"
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
 spec:
-  project: default
   source:
-    repoURL: https://github.com/b-zago/box
-    targetRevision: HEAD
     path: k3s/overlays/staging/config
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: argocd
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true

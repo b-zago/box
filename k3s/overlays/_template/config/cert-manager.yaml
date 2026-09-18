@@ -8,7 +8,7 @@ spec:
     solvers:
       - selector:
           dnsZones:
-            - pve.zagoapps.com
+            - ${DOMAIN}
         dns01:
           cloudflare:
             apiTokenSecretRef:

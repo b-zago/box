@@ -1,11 +1,11 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: staging-gateway
-  namespace: staging
+  name: ${ENV}-gateway
+  namespace: ${ENV}
 spec:
   listeners:
     - name: websecure
-      hostname: "*.pve.zagoapps.com"
+      hostname: "*.${DOMAIN}"
     - name: websecure-apex
-      hostname: "pve.zagoapps.com"
+      hostname: "${DOMAIN}"
