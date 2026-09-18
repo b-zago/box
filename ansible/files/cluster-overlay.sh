@@ -1,7 +1,9 @@
 #!/bin/bash
+set -e
 
-cp -r ../../k3s/overlays/_template/ "../../k3s/overlays/$ENV" && cd "../../k3s/overlays/$ENV"
+rm -rf "../k3s/overlays/$ENV"
+cp -r ../k3s/overlays/_template/ "../k3s/overlays/$ENV"
 
-for f in "../../k3s/overlays/$ENV"; do
+find "../k3s/overlays/$ENV" -type f -print0 | while IFS= read -r -d '' f; do
   envsubst <"$f" >"$f.tmp" && mv "$f.tmp" "$f"
 done

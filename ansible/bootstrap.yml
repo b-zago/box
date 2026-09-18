@@ -132,6 +132,10 @@
 - name: Setup OIDC on AWS side via terraform
   hosts: localhost
   tasks:
+    - name: Get env from server host
+      ansible.builtin.set_fact:
+        env: "{{ hostvars['k3s-server']['env'] }}"
+
     - name: Read existing tfvars
       ansible.builtin.slurp:
         src: ../terraform/aws/oidc/terraform.tfvars.json
@@ -167,8 +171,7 @@
       changed_when: false
 
     - name: Commit and push changes to aws oidc
-      ansible.builtin.command:
-        cmd: git add "../terraform/aws/oidc/" && git commit -m "AWS OIDC changes" && git push origin main
+      ansible.builtin.shell: git add "../terraform/aws/oidc/" && git commit -m "AWS OIDC changes" && git push origin main
       when: git_status.stdout | length > 0
       changed_when: false
 
@@ -189,7 +192,7 @@
     - name: Get object from S3 bucket
       amazon.aws.s3_object:
         bucket: "{{ ca_bucket }}"
-        object: "{{ ca_cert_path }}"
+        object: "{{ ca_cert_path }}/ca.crt"
         dest: /tmp/k3s-ca.crt
         mode: get
         overwrite: different
@@ -216,6 +219,10 @@
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   tasks:
+    - name: Get tf_output from localhost
+      ansible.builtin.set_fact:
+        tf_output: "{{ hostvars['localhost']['tf_output'] }}"
+
     - name: Ensure git is installed
       ansible.builtin.package:
         name: git
@@ -235,8 +242,8 @@
         ARGOCD_IP: "{{ argocd_ip }}"
         DOMAIN: "{{ domain }}"
         TRAEFIK_IP: "{{ traefik_ip }}"
-        ESO_ROLE_ARN: "{{ tf_output.providers.value[env] }}"
-        METALLB-POOL: "{{ metallb_pool }}"
+        ESO_ROLE_ARN: "{{ tf_output.outputs.providers.value[env] }}"
+        METALLB_POOL: "{{ metallb_pool }}"
       become: false
       delegate_to: localhost
 
@@ -258,8 +265,7 @@
       delegate_to: localhost
 
     - name: Commit and push new cluster manifests
-      ansible.builtin.command:
-        cmd: git add "../k3s/overlays/{{ env }}" && git commit -m "Generated cluster {{ env }}" && git push origin main
+      ansible.builtin.shell: git add "../k3s/overlays/{{ env }}" && git commit -m "Generated cluster {{ env }}" && git push origin main
       when: git_status.stdout | length > 0
       changed_when: false
       delegate_to: localhost
