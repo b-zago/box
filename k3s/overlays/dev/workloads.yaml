@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: workloads
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL: https://github.com/b-zago/box
+        revision: HEAD
+        directories:
+          - path: k3s/overlays/dev/workloads/*
+  template:
+    metadata:
+      name: "{{.path.basename}}"
+    spec:
+      source:
+        kustomize:
+          patches:
+            - target:
+                kind: HTTPRoute
+                name: "{{.path.basename}}"
+              patch: |-
+                - op: replace
+                  path: /spec/hostnames/0
+                  value: {{.path.basename}}.pve.zagoapps.com
+                - op: replace
+                  path: /spec/parentRefs/0/name
+                  value: dev-gateway
+      destination:
+        namespace: dev

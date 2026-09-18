@@ -1,0 +1,11 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: dev-gateway
+  namespace: dev
+spec:
+  listeners:
+    - name: websecure
+      hostname: "*.pve.zagoapps.com"
+    - name: websecure-apex
+      hostname: "pve.zagoapps.com"
