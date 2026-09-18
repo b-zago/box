@@ -3,7 +3,6 @@ kind: Kustomization
 
 resources:
   - metallb.yaml
-  - gateway.yaml
   - eso.yaml
   - cert-manager.yaml
   - argocd-install-app.yaml
