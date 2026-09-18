@@ -301,15 +301,28 @@
       changed_when: false
 
     - name: Apply argocd server patch
-      ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/b-zago/box/main/k3s/overlays/{{ env }}/config/argocd/argocd-server.yaml
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - patch
+          - svc
+          - argocd-server
+          - -n
+          - argocd
+          - -p
+          - '{"spec": {"type": "LoadBalancer", "loadBalancerIP": "{{ argocd_ip }}"}}'
       changed_when: false
 
     - name: Apply infra-app
-      ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/b-zago/box/main/k3s/overlays/{{ env }}/infra.yaml
+      ansible.builtin.command: kubectl apply -k github.com/b-zago/box/k3s/overlays/{{ env }}/infra?ref=main --server-side
       changed_when: false
 
     - name: Wait for MetalLB
       ansible.builtin.command: kubectl wait deployment/metallb-controller -n metallb-system --for=jsonpath='{.status.readyReplicas}'=1 --timeout=150s
+      register: metallb_wait
+      until: metallb_wait.rc == 0
+      retries: 10
+      delay: 5
       changed_when: false
 
     - name: Apply MetalLB config
@@ -318,7 +331,7 @@
 
     - name: Wait for argocd-server to pick up IP from MetalLB - testing connection
       ansible.builtin.wait_for:
-        host: 10.11.0.241
+        host: "{{ argocd_ip }}"
         port: 443
         state: started
         delay: 5
@@ -334,7 +347,7 @@
         argv:
           - argocd
           - login
-          - 10.11.0.241
+          - "{{ argocd_ip }}"
           - --insecure #insecure is fine since argo wont have external access either way
           - --username
           - admin
@@ -365,5 +378,5 @@
       changed_when: false
 
     - name: Apply root-app
-      ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/b-zago/box/main/k3s/overlays/staging/root-app.yaml
+      ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/b-zago/box/main/k3s/overlays/{{ env }}/root-app.yaml
       changed_when: false
