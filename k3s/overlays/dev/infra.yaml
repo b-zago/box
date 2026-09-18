@@ -1,0 +1,8 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: infra-app
+  namespace: argocd
+spec:
+  source:
+    path: k3s/overlays/dev/infra
