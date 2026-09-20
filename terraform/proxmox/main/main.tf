@@ -10,12 +10,19 @@ locals {
       ip   = split("/", m.ipv4_address)[0]
     }
   ]
+
+  postgresql_host = {
+    name = module.postgresql.hostname
+    ip   = split("/", module.postgresql.ipv4_address)[0]
+  }
 }
 
 resource "local_file" "k3s_inventory" {
   content = templatefile("${path.module}/templates/k3s_inventory.tpl", {
     server_name = local.server_host.name
     server_ip   = local.server_host.ip
+    pg_name     = local.postgresql_host.name
+    pg_ip       = local.postgresql_host.ip
     agents      = local.agent_hosts
   })
 
@@ -110,6 +117,17 @@ module "node_vm" {
   hostname         = "k3s-agent-${count.index + 1}"
   ipv4_address     = "10.10.10.${count.index + 12}/24"
   vm_name          = "k3s-agent-${count.index + 1}"
+  download_file_id = proxmox_download_file.debian13.id
+}
+
+module "postgresql" {
+  source           = "../modules/k3s-node-vm/"
+  ssh_public_key   = file("./config/id_hetz.pub")
+  cores            = 2
+  memory           = 4096
+  hostname         = "postgresql"
+  ipv4_address     = "10.10.10.50/24"
+  vm_name          = "postgresql"
   download_file_id = proxmox_download_file.debian13.id
 }
 

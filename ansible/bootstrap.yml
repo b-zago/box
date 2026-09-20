@@ -136,19 +136,26 @@
       ansible.builtin.set_fact:
         env: "{{ hostvars['k3s-server']['env'] }}"
 
+    - name: Get iam roles from server host
+      ansible.builtin.set_fact:
+        iam_roles: "{{ hostvars['k3s-server']['iam_roles'] }}"
+
+    - name: Set tfvars path
+      ansible.builtin.set_fact:
+        tfvars_path: "{{ playbook_dir }}/../terraform/aws/oidc/terraform.tfvars.json"
+
     - name: Read existing tfvars
-      ansible.builtin.slurp:
-        src: ../terraform/aws/oidc/terraform.tfvars.json
-      register: raw_json
+      ansible.builtin.set_fact:
+        tfvars: "{{ lookup('file', tfvars_path) | from_json }}"
 
     - name: Parse JSON and append if missing
       ansible.builtin.set_fact:
-        updated_list: "{{ (raw_json.content | b64decode | from_json).clusters | union([env]) }}"
+        tfvars: "{{ tfvars | combine({'clusters': {env: iam_roles}}, recursive=True) }}"
 
-    - name: Write updated list back
+    - name: Write tfvars back
       ansible.builtin.copy:
-        content: "{{ (raw_json.content | b64decode | from_json) | combine({'clusters': updated_list}) | to_nice_json }}"
-        dest: ../terraform/aws/oidc/terraform.tfvars.json
+        content: "{{ tfvars | to_nice_json(sort_keys=false) }}"
+        dest: "{{ tfvars_path }}"
 
     - name: Run terraform
       community.general.terraform:
@@ -156,6 +163,10 @@
         state: present
         force_init: true
       register: tf_output
+
+    - name: Show tf_output
+      ansible.builtin.debug:
+        var: tf_output.outputs
 
     - name: Git pull
       ansible.builtin.command:
@@ -242,7 +253,7 @@
         ARGOCD_IP: "{{ argocd_ip }}"
         DOMAIN: "{{ domain }}"
         TRAEFIK_IP: "{{ traefik_ip }}"
-        ESO_ROLE_ARN: "{{ tf_output.outputs.providers.value[env] }}"
+        ESO_ROLE_ARN: "{{ tf_output.outputs.providers.value[env][eso_role] }}"
         METALLB_POOL: "{{ metallb_pool }}"
       become: false
       delegate_to: localhost

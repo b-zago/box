@@ -1,0 +1,83 @@
+- name: PostgreSQL server
+  hosts: postgresql-server
+  become: true
+
+  handlers:
+    - name: Restart postgresql
+      ansible.builtin.systemd:
+        name: postgresql
+        state: restarted
+
+  tasks:
+    - name: Install prerequisites
+      ansible.builtin.apt:
+        name:
+          - acl # needed for become_user: postgres
+          - ca-certificates
+          - python3-psycopg2 # needed by the community.postgresql modules
+        state: present
+        update_cache: true
+
+    - name: Add PGDG repository
+      ansible.builtin.deb822_repository:
+        name: pgdg
+        types: deb
+        uris: https://apt.postgresql.org/pub/repos/apt
+        suites: "{{ ansible_facts['distribution_release'] }}-pgdg"
+        components: main
+        signed_by: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+        state: present
+
+    - name: Install PostgreSQL {{ pg_version }}
+      ansible.builtin.apt:
+        name: "postgresql-{{ pg_version }}"
+        state: present
+        update_cache: true
+
+    - name: Ensure PostgreSQL is running and enabled
+      ansible.builtin.systemd:
+        name: postgresql
+        state: started
+        enabled: true
+
+    - name: Listen on the network
+      community.postgresql.postgresql_set:
+        name: listen_addresses
+        value: "{{ pg_listen_addresses }}"
+      become_user: postgres
+      notify: Restart postgresql
+
+    - name: Allow the cluster to connect
+      community.postgresql.postgresql_pg_hba:
+        dest: "/etc/postgresql/{{ pg_version }}/main/pg_hba.conf"
+        contype: host
+        databases: all
+        users: all
+        source: "{{ item }}"
+        method: scram-sha-256
+        state: present
+      loop: "{{ pg_allowed_sources }}"
+      notify: Restart postgresql
+
+    - name: Apply config before creating the role
+      ansible.builtin.meta: flush_handlers
+
+    # The lookup runs on the control node, using its AWS credentials.
+    # The DB VM never talks to AWS.
+    - name: Read the admin credential from SSM
+      ansible.builtin.set_fact:
+        pg_admin: >-
+          {{ lookup('amazon.aws.aws_ssm', ssm_prefix ~ '/admin',
+                    region=aws_region) | from_json }}
+      no_log: true
+
+    # Created over local peer auth, so no superuser password crosses the
+    # network. CREATEROLE + CREATEDB is all the k8s bootstrap Job needs.
+    - name: Create the bootstrap admin role
+      community.postgresql.postgresql_user:
+        name: "{{ pg_admin.username }}"
+        password: "{{ pg_admin.password }}"
+        role_attr_flags: CREATEROLE,CREATEDB,LOGIN
+        state: present
+      become_user: postgres
+      no_log: true
