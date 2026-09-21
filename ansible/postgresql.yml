@@ -81,3 +81,11 @@
         state: present
       become_user: postgres
       no_log: true
+
+    - name: Let the bootstrap role use the roles it creates
+      community.postgresql.postgresql_query:
+        db: postgres
+        query: >-
+          ALTER ROLE {{ pg_admin.username }}
+          SET createrole_self_grant = 'set, inherit'
+      become_user: postgres
