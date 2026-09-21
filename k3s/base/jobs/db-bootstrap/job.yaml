@@ -62,6 +62,9 @@ spec:
               ALTER ROLE :"m_user" PASSWORD :'m_pass';
               ALTER ROLE :"a_user" PASSWORD :'a_pass';
 
+              GRANT :"m_user" TO CURRENT_USER WITH SET TRUE;
+              GRANT :"a_user" TO CURRENT_USER WITH SET TRUE;
+
               SELECT format('CREATE DATABASE %I OWNER %I', :'db', :'m_user')
               WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = :'db')\gexec
 

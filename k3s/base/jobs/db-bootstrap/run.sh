@@ -10,4 +10,7 @@ MANIFEST="https://raw.githubusercontent.com/b-zago/box/$REF/k3s/base/jobs/db-boo
 
 kubectl delete -f "$MANIFEST" --ignore-not-found
 kubectl apply -f "$MANIFEST"
-kubectl logs -f job/db-bootstrap -n postgresql-admin --pod-running-timeout=120s
+
+kubectl wait --for=condition=ready pod -l job-name=db-bootstrap \
+  -n postgresql-admin --timeout=120s || true
+kubectl logs -f job/db-bootstrap -n postgresql-admin
