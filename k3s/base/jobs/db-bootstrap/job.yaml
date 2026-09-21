@@ -1,0 +1,90 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-bootstrap
+  namespace: postgresql-admin
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: postgresql-admin
+      containers:
+        - name: bootstrap
+          image: ghcr.io/b-zago/pg-bootstrap:1.0.0 # aws-cli + psql + jq
+          env:
+            - name: PGHOST
+              value: "10.10.10.50"
+            - name: SSM_PREFIX
+              value: /clusters/pgsql
+            - name: AWS_REGION
+              value: eu-central-1
+            - name: AWS_ROLE_ARN
+              value: arn:aws:iam::879816410795:role/metal_dev_pgsql_role
+            - name: AWS_WEB_IDENTITY_TOKEN_FILE
+              value: /var/run/secrets/aws/token
+          volumeMounts:
+            - {
+                name: aws-token,
+                mountPath: /var/run/secrets/aws,
+                readOnly: true,
+              }
+            - { name: config, mountPath: /config, readOnly: true }
+          args:
+            - |
+              set -euo pipefail
+
+              get() { aws ssm get-parameter --name "$1" --with-decryption \
+                        --query Parameter.Value --output text; }
+
+              ADMIN=$(get "$SSM_PREFIX/admin")
+              PGUSER=$(echo "$ADMIN" | jq -r .username)
+              PGPASSWORD=$(echo "$ADMIN" | jq -r .password)
+              export PGUSER PGPASSWORD
+
+              for db in $(grep -vE '^\s*(#|$)' /config/databases); do
+                M=$(get "$SSM_PREFIX/$db/migrator")
+                A=$(get "$SSM_PREFIX/$db/app")
+
+                psql -h "$PGHOST" -d postgres -v ON_ERROR_STOP=1 \
+                  -v m_user="$(echo "$M" | jq -r .username)" \
+                  -v m_pass="$(echo "$M" | jq -r .password)" \
+                  -v a_user="$(echo "$A" | jq -r .username)" \
+                  -v a_pass="$(echo "$A" | jq -r .password)" \
+                  -v db="$db" <<'SQL'
+              SELECT format('CREATE ROLE %I LOGIN', :'m_user')
+              WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'m_user')\gexec
+
+              SELECT format('CREATE ROLE %I LOGIN', :'a_user')
+              WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'a_user')\gexec
+
+              ALTER ROLE :"m_user" PASSWORD :'m_pass';
+              ALTER ROLE :"a_user" PASSWORD :'a_pass';
+
+              SELECT format('CREATE DATABASE %I OWNER %I', :'db', :'m_user')
+              WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = :'db')\gexec
+
+              \connect :"db"
+
+              -- Atlas creates objects as the migrator, so grant defaults as it.
+              SET ROLE :"m_user";
+              ALTER DEFAULT PRIVILEGES IN SCHEMA public
+                GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO :"a_user";
+              ALTER DEFAULT PRIVILEGES IN SCHEMA public
+                GRANT USAGE, SELECT ON SEQUENCES TO :"a_user";
+              SQL
+
+                echo "$db ok"
+              done
+      volumes:
+        - name: config
+          configMap:
+            name: db-bootstrap
+        - name: aws-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  audience: sts.amazonaws.com
+                  expirationSeconds: 3600
+                  path: token
