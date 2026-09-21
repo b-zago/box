@@ -28,13 +28,14 @@ put() {
     return
   fi
 
-  local value
+  local value host url
 
   if [[ "$genURL" == true ]]; then
-    host=$(aws ssm get-parameter --name "$PREFIX/host" --with-decryption --query "Parameter.Value" --output text | jq -r '.host')
-    url="postgresql://$user:$password@$host:5432/$DB?sslmode=disabled"
-    url=$(urlencode "$url")
-    value=$(jq -nc --arg u "$user" --arg p "$password" --arg url "$url" '{username:$u,password:$p,url:$url}')
+    host=$(aws ssm get-parameter --name "$PREFIX/host" --with-decryption \
+      --region "$REGION" --query "Parameter.Value" --output text | jq -r '.host')
+    url="postgres://$(urlencode "$user"):$(urlencode "$password")@${host}:5432/${DB}?sslmode=disable"
+    value=$(jq -nc --arg u "$user" --arg p "$password" --arg url "$url" \
+      '{username:$u,password:$p,url:$url}')
   else
     value=$(jq -nc --arg u "$user" --arg p "$password" '{username:$u,password:$p}')
   fi
