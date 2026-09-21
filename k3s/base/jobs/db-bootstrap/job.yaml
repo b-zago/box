@@ -18,6 +18,8 @@ spec:
               value: "10.10.10.50"
             - name: SSM_PREFIX
               value: /clusters/pgsql
+            - name: CLUSTER
+              value: dev
             - name: AWS_REGION
               value: eu-central-1
             - name: AWS_ROLE_ARN
@@ -44,8 +46,8 @@ spec:
               export PGUSER PGPASSWORD
 
               for db in $(grep -vE '^\s*(#|$)' /config/databases); do
-                M=$(get "$SSM_PREFIX/$db/migrator")
-                A=$(get "$SSM_PREFIX/$db/app")
+                M=$(get "$SSM_PREFIX/$CLUSTER/$db/migrator")
+                A=$(get "$SSM_PREFIX/$CLUSTER/$db/app")
 
                 psql -h "$PGHOST" -d postgres -v ON_ERROR_STOP=1 \
                   -v m_user="$(echo "$M" | jq -r .username)" \

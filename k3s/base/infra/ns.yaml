@@ -32,6 +32,13 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
+  name: atlas-operator
+  labels:
+    name: atlas-operator
+---
+apiVersion: v1
+kind: Namespace
+metadata:
   name: postgresql-admin
   labels:
     name: postgresql-admin

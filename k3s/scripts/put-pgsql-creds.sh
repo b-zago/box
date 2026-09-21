@@ -8,14 +8,19 @@
 
 set -euo pipefail
 
-DB="${1:?usage: $0 <database> <app-password> [--force]}"
+DB="${1:?usage: $0 <database> <app-password> <cluster> [--force]}"
 APP_PASSWORD="${2:?usage: $0 <database> <app-password> [--force]}"
-FORCE="${3:-}"
+CLUSTER="${3:?usage: $0 <database> <app-password> <cluster> [--force]}"
+FORCE="${4:-}"
 PREFIX="${SSM_PREFIX:-/clusters/pgsql}"
 REGION="${AWS_REGION:-eu-central-1}"
 
+urlencode() {
+  jq -rn --arg v "$1" '$v | @uri'
+}
+
 put() {
-  local name="$1" user="$2" password="$3"
+  local name="$1" user="$2" password="$3" genURL="$4"
 
   if aws ssm get-parameter --name "$name" --region "$REGION" >/dev/null 2>&1 &&
     [ "$FORCE" != "--force" ]; then
@@ -24,14 +29,23 @@ put() {
   fi
 
   local value
-  value=$(jq -nc --arg u "$user" --arg p "$password" '{username:$u,password:$p}')
+
+  if [[ "$genURL" == true ]]; then
+    host=$(aws ssm get-parameter --name "$PREFIX/host" --with-decryption --query "Parameter.Value" --output text | jq -r '.host')
+    url="postgresql://$user:$password@$host:5432/$DB?sslmode=disabled"
+    url=$(urlencode "$url")
+    value=$(jq -nc --arg u "$user" --arg p "$password" --arg url "$url" '{username:$u,password:$p,url:$url}')
+  else
+    value=$(jq -nc --arg u "$user" --arg p "$password" '{username:$u,password:$p}')
+  fi
 
   aws ssm put-parameter --name "$name" --value "$value" \
     --type SecureString --overwrite --region "$REGION" >/dev/null
   echo "wrote  $name ($user)"
 }
 
-put "$PREFIX/$DB/migrator" "${DB}_migrator" \
-  "$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 32)"
+put "$PREFIX/$CLUSTER/$DB/migrator" "${DB}_migrator" \
+  "$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 32)" \
+  true
 
-put "$PREFIX/$DB/app" "${DB}_app" "$APP_PASSWORD"
+put "$PREFIX/$CLUSTER/$DB/app" "${DB}_app" "$APP_PASSWORD" false
