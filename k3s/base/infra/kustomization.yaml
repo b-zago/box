@@ -8,5 +8,4 @@ resources:
   - ns.yaml
   - traefik.yaml
   - sa.yaml
-  - cm.yaml
   - atlas.yaml
