@@ -7,3 +7,5 @@ resources:
   - metallb.yaml
   - ns.yaml
   - traefik.yaml
+  - sa.yaml
+  - cm.yaml
