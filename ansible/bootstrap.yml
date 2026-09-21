@@ -254,6 +254,8 @@
         DOMAIN: "{{ domain }}"
         TRAEFIK_IP: "{{ traefik_ip }}"
         ESO_ROLE_ARN: "{{ tf_output.outputs.providers.value[env][eso_role] }}"
+        PG_ROLE_ARN: "{{ tf_output.outputs.providers.value[env][pg_role] | default('unspecified') }}"
+        PG_HOST: "{{ hostvars['postgresql'].ansible_host | default('unspecified') }}"
         METALLB_POOL: "{{ metallb_pool }}"
       become: false
       delegate_to: localhost

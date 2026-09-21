@@ -1,4 +1,5 @@
 # The list of databases. One per line.
+# After adding to the list run script put-pgsql-db-bootstrap-job.sh
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,4 +7,3 @@ metadata:
   namespace: postgresql-admin
 data:
   databases: |
-    simple-api

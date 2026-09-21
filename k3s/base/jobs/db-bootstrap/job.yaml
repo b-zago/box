@@ -13,19 +13,9 @@ spec:
       containers:
         - name: bootstrap
           image: ghcr.io/b-zago/pgsql-bootstrap:1.0.0 # aws-cli + psql + jq
-          env:
-            - name: PGHOST
-              value: "10.10.10.50"
-            - name: SSM_PREFIX
-              value: /clusters/pgsql
-            - name: CLUSTER
-              value: dev
-            - name: AWS_REGION
-              value: eu-central-1
-            - name: AWS_ROLE_ARN
-              value: arn:aws:iam::879816410795:role/metal_dev_pgsql_role
-            - name: AWS_WEB_IDENTITY_TOKEN_FILE
-              value: /var/run/secrets/aws/token
+          envFrom:
+            - configMapRef:
+                name: pgsql-bootstrap-env
           volumeMounts:
             - {
                 name: aws-token,

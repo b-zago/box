@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgsql-bootstrap-env
+  namespace: postgresql-admin
+data:
+  PGHOST: kustomize
+  SSM_PREFIX: /clusters/pgsql
+  CLUSTER: kustomize
+  AWS_REGION: eu-central-1
+  AWS_ROLE_ARN: kustomize
+  AWS_WEB_IDENTITY_TOKEN_FILE: /var/run/secrets/aws/token

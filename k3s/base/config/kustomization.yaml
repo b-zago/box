@@ -6,3 +6,4 @@ resources:
   - eso.yaml
   - cert-manager.yaml
   - argocd-install-app.yaml
+  - pgsql-bootstrap-cm.yaml
