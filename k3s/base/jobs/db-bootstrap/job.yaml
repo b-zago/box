@@ -12,7 +12,7 @@ spec:
       serviceAccountName: postgresql-admin
       containers:
         - name: bootstrap
-          image: ghcr.io/b-zago/pg-bootstrap:1.0.0 # aws-cli + psql + jq
+          image: ghcr.io/b-zago/pgsql-bootstrap:1.0.0 # aws-cli + psql + jq
           env:
             - name: PGHOST
               value: "10.10.10.50"
