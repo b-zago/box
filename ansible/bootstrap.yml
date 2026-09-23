@@ -342,6 +342,10 @@
       ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/b-zago/box/main/k3s/overlays/{{ env }}/config/metallb.yaml
       changed_when: false
 
+    - name: Apply MetalLB L2 Advertisement
+      ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/b-zago/box/main/k3s/base/config/metallb.yaml
+      changed_when: false
+
     - name: Wait for argocd-server to pick up IP from MetalLB - testing connection
       ansible.builtin.wait_for:
         host: "{{ argocd_ip }}"

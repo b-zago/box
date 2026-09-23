@@ -11,21 +11,6 @@ spec:
         directories:
           - path: k3s/overlays/${ENV}/workloads/*
   template:
-    metadata:
-      name: "{{.path.basename}}"
     spec:
-      source:
-        kustomize:
-          patches:
-            - target:
-                kind: HTTPRoute
-                name: "{{.path.basename}}"
-              patch: |-
-                - op: replace
-                  path: /spec/hostnames/0
-                  value: {{.path.basename}}.${DOMAIN}
-                - op: replace
-                  path: /spec/parentRefs/0/name
-                  value: ${ENV}-gateway
       destination:
         namespace: ${ENV}

@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: pgsql-bootstrap-env
-  namespace: postgresql-admin
-data:
-  PGHOST: 10.10.10.50
-  CLUSTER: dev
-  AWS_ROLE_ARN: arn:aws:iam::879816410795:role/metal_dev_pgsql_role

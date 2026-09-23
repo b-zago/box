@@ -11,10 +11,10 @@ spec:
         repoURL: https://github.com/b-zago/box
         revision: HEAD
         directories:
-          - path: k3s/workloads/*/overlays/*
+          - path: k3s/base/workloads/*
   template:
     metadata:
-      name: "{{index .path.segments 2}}-{{.path.basename}}"
+      name: "{{.path.basename}}"
       namespace: argocd
       finalizers:
         - resources-finalizer.argocd.argoproj.io
@@ -26,7 +26,7 @@ spec:
         path: "{{.path.path}}"
       destination:
         server: https://kubernetes.default.svc
-        namespace: "{{.path.basename}}"
+        namespace: dev #kustomize this
       syncPolicy:
         automated:
           prune: true

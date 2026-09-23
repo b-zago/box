@@ -9,8 +9,3 @@ spec:
       - selector:
           dnsZones:
             - ${DOMAIN}
-        dns01:
-          cloudflare:
-            apiTokenSecretRef:
-              name: cf-token
-              key: cf-token

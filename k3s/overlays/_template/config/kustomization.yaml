@@ -6,9 +6,9 @@ resources:
   - gateway.yaml
   - eso.yaml
   - databases.yaml
+  - metallb.yaml
 
 patches:
   - path: argocd-install-app.yaml
-  - path: metallb.yaml
   - path: cert-manager.yaml
   - path: pgsql-bootstrap-cm.yaml

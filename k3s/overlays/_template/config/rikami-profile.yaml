@@ -1,0 +1,25 @@
+apiVersion: rikami.zagoapps.com/v1alpha1
+kind: Profile
+metadata:
+  name: default
+  namespace: ${ENV}
+spec:
+  gateway: ${ENV}-gateway
+  pullPolicy: Always
+  pullSecret: ghcr-creds
+  domain: ${DOMAIN}
+  externalSecretsConfig:
+    refreshPolicy: CreatedOnce
+    refreshInterval: 0s
+    secretStoreRef:
+      name: aws-ssm
+      kind: ClusterSecretStore
+  databaseConfig:
+    appConfig:
+      hostKey: host
+      passwordKey: password
+      usernameKey: username
+      secretAppPath: /clusters/pgsql/dev/*/app
+    migratorConfig:
+      secretMigratorPath: /clusters/pgsql/dev/*/migrator
+      secretKey: url
