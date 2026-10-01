@@ -9,3 +9,4 @@ resources:
   - traefik.yaml
   - sa.yaml
   - atlas.yaml
+  - rikami.yaml
