@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: traefik
+  namespace: argocd
+spec:
+  source:
+    repoURL: https://traefik.github.io/charts
+    chart: traefik
+    targetRevision: v39.0.9
+    helm:
+      values: |
+        api:
+          dashboard: false
+        providers:
+          kubernetesGateway:
+            enabled: true
+        gateway:
+          enabled: false
+        metrics:
+          prometheus:
+            enabled: true
+        service:
+          spec:
+            loadBalancerIP: "10.10.10.240"
