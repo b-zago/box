@@ -9,3 +9,8 @@ spec:
       - selector:
           dnsZones:
             - pve.zagoapps.com
+        dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cf-token
+              key: cf-token
