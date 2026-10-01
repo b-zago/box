@@ -1,0 +1,45 @@
+pve_force: false
+pve_suite: trixie
+pve_component: pve-no-subscription
+pve_keyring: /usr/share/keyrings/proxmox-archive-keyring.gpg
+pve_keyring_url: https://enterprise.proxmox.com/debian/proxmox-archive-keyring-trixie.gpg
+pve_keyring_sha256: "136673be77aba35dcce385b28737689ad64fd785a797e57897589aed08db6e45" # fill in, then commit — this one's meant to be public
+
+pve_packages:
+  - proxmox-ve
+  - postfix
+  - open-iscsi
+  - chrony
+
+pve_default_role: Administrator
+pve_user: terraform@pve
+pve_token_id: provider
+
+bridge_name: vmbr0
+bridge_ports: none
+uplink_bridge: vmbr0
+
+portforward_rules:
+  - pub_port: 80
+    proto: tcp
+    dest_ip: 10.11.0.240
+    dest_port: 80
+    comment: HTTP
+  - pub_port: 443
+    proto: tcp
+    dest_ip: 10.11.0.240
+    dest_port: 443
+    comment: HTTPS
+
+ebs_id: 08ebff478fd1129bf # substring matched in /dev/disk/by-id/
+s3_ca_path: "{{ vault_s3_ca_path }}" # positional arg to ./ca/sign-cert.sh
+ca_cn: "Zago CA" # must appear in the cert issuer line
+
+bridge_address: 10.11.0.1/24
+bridge_subnet: 10.11.0.0/24 # must contain bridge_address
+
+wg_iface: "{{ vault_wg_iface }}"
+wg_port: "{{ vault_wg_port }}"
+wg_address: "{{ vault_wg_address }}" # must not overlap bridge_subnet
+client_pubkey: "{{ vault_client_pubkey }}"
+client_allowed_ips: "{{ vault_client_allowed_ips }}"

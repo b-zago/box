@@ -1,0 +1,8 @@
+pg_version: 17
+pg_listen_addresses: "10.10.10.50"
+
+pg_allowed_sources:
+  - 10.10.10.0/24
+
+aws_region: eu-central-1
+ssm_prefix: /clusters/pgsql
