@@ -7,6 +7,7 @@ resources:
   - eso.yaml
   - databases.yaml
   - metallb.yaml
+  - rikami-profile.yaml
 
 patches:
   - path: argocd-install-app.yaml
