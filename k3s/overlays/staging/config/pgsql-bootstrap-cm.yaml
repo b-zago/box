@@ -6,4 +6,4 @@ metadata:
 data:
   PGHOST: 10.10.10.50
   CLUSTER: staging
-  AWS_ROLE_ARN: arn:aws:iam::879816410795:role/metal_dev_pgsql_role
+  AWS_ROLE_ARN: arn:aws:iam::879816410795:role/metal_staging_pgsql_role

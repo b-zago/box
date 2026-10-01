@@ -13,4 +13,4 @@ spec:
         serviceAccount:
           name: external-secrets
           annotations:
-            eks.amazonaws.com/role-arn: arn:aws:iam::879816410795:role/metal_dev_role
+            eks.amazonaws.com/role-arn: arn:aws:iam::879816410795:role/metal_staging_role
