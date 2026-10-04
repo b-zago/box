@@ -13,3 +13,6 @@ agents
 [k3s:vars]
 ansible_user=op
 k3s_version=${k3s_version}
+%{ if pg_ip != null ~}
+pg_host=${pg_ip}
+%{ endif ~}

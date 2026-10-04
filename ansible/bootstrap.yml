@@ -134,11 +134,11 @@
   tasks:
     - name: Get env from server host
       ansible.builtin.set_fact:
-        env: "{{ hostvars['k3s-server']['env'] }}"
+        env: "{{ hostvars[groups['server'][0]]['env'] }}"
 
     - name: Get iam roles from server host
       ansible.builtin.set_fact:
-        iam_roles: "{{ hostvars['k3s-server']['iam_roles'] }}"
+        iam_roles: "{{ hostvars[groups['server'][0]]['iam_roles'] }}"
 
     - name: Set tfvars path
       ansible.builtin.set_fact:
@@ -255,7 +255,7 @@
         TRAEFIK_IP: "{{ traefik_ip }}"
         ESO_ROLE_ARN: "{{ tf_output.outputs.providers.value[env][eso_role] }}"
         PG_ROLE_ARN: "{{ tf_output.outputs.providers.value[env][pg_role] | default('unspecified') }}"
-        PG_HOST: "{{ hostvars['postgresql'].ansible_host | default('unspecified') }}"
+        PG_HOST: "{{ pg_host | default('unspecified') }}"
         METALLB_POOL: "{{ metallb_pool }}"
       become: false
       delegate_to: localhost
@@ -340,10 +340,18 @@
 
     - name: Apply MetalLB config
       ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/b-zago/box/main/k3s/overlays/{{ env }}/config/metallb.yaml
+      register: metallb_config
+      until: metallb_config.rc == 0
+      retries: 12
+      delay: 10
       changed_when: false
 
     - name: Apply MetalLB L2 Advertisement
       ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/b-zago/box/main/k3s/base/config/metallb.yaml
+      register: metallb_l2
+      until: metallb_l2.rc == 0
+      retries: 12
+      delay: 10
       changed_when: false
 
     - name: Wait for argocd-server to pick up IP from MetalLB - testing connection

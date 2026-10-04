@@ -36,6 +36,7 @@ locals {
     )
   ]...)
 
+  enable_postgres = true
 }
 
 ###--- MINECRAFT FOR NOW ---###
@@ -120,6 +121,8 @@ module "k3s_node" {
 }
 
 module "postgresql" {
+  count = local.enable_postgres ? 1 : 0
+
   source           = "../modules/k3s-node-vm/"
   ssh_public_key   = file("./config/id_hetz.pub")
   cores            = 2
@@ -129,6 +132,8 @@ module "postgresql" {
   vm_name          = "postgresql"
   download_file_id = proxmox_download_file.debian13.id
 }
+
+
 
 resource "local_file" "k3s_inventory" {
   for_each = local.clusters
@@ -140,7 +145,7 @@ resource "local_file" "k3s_inventory" {
       for k, n in local.nodes : { name = k, ip = n.ip }
       if n.cluster == each.key && n.role == "agent"
     ]
-
+    pg_ip       = local.enable_postgres ? split("/", module.postgresql[0].ipv4_address)[0] : null
     k3s_version = each.value.k3s_version
   })
 

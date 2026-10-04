@@ -1,0 +1,10 @@
+apiVersion: rikami.zagoapps.com/v1alpha1
+kind: Vessel
+metadata:
+  name: portfolio
+spec:
+  servers:
+    - image: ghcr.io/b-zago/portfolio/webserver:d9a5a09
+      port: 80
+      name: portfolio
+      rootDomain: true
