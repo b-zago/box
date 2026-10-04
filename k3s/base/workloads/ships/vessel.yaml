@@ -18,3 +18,4 @@ spec:
         - name: ships-redis
           image: redis:8-alpine
           port: 6379
+          useProfileResources: true

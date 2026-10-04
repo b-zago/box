@@ -15,6 +15,7 @@ spec:
         - name: scorevault-redis
           image: redis:8-alpine
           port: 6379
+          useProfileResources: true
 
       databases:
         - name: scorevault
