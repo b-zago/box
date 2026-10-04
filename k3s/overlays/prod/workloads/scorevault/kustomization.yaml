@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: prod
+
+resources:
+  - ../../../../base/workloads/scorevault/
+
+patches:
+  - target:
+      kind: Vessel
+      name: scorevault
+    patch: |-
+      - op: test
+        path: /spec/servers/0/name
+        value: scorevault
+      - op: replace
+        path: /spec/servers/0/image
+        value: ghcr.io/b-zago/scorevault/webserver:latest
+      - op: add
+        path: /spec/servers/0/envs/POSTGRES_DB
+        value: scorevault
+      - op: test
+        path: /spec/servers/0/databases/0/name
+        value: scorevault
+      - op: replace
+        path: /spec/servers/0/databases/0/name
+        value: scorevault

@@ -1,0 +1,26 @@
+apiVersion: rikami.zagoapps.com/v1alpha1
+kind: Vessel
+metadata:
+  name: scorevault
+spec:
+  servers:
+    - image: ghcr.io/b-zago/scorevault/webserver:latest
+      port: 8000
+      name: scorevault
+      envs:
+        REDIS: scorevault-redis
+
+      services:
+        - name: scorevault-redis
+          image: redis:8-alpine
+          port: 6379
+
+      databases:
+        - name: scorevault
+          schema: |
+            CREATE TABLE IF NOT EXISTS scores (
+              id SERIAL PRIMARY KEY,
+              player VARCHAR(50),
+              score INTEGER,
+              created_at TIMESTAMP DEFAULT NOW()
+            )
