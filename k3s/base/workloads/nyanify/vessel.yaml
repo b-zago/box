@@ -1,0 +1,9 @@
+apiVersion: rikami.zagoapps.com/v1alpha1
+kind: Vessel
+metadata:
+  name: nyanify
+spec:
+  servers:
+    - image: ghcr.io/b-zago/nyanify/webserver:71e2f0d
+      port: 8000
+      name: nyanify
