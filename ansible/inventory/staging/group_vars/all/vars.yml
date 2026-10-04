@@ -1,11 +1,11 @@
 env: staging
 
 argocd_username: box
-argocd_ip: 10.10.10.241
-traefik_ip: 10.10.10.240
-metallb_pool: 10.10.10.240-10.10.10.250
+argocd_ip: 10.10.10.211
+traefik_ip: 10.10.10.210
+metallb_pool: 10.10.10.210-10.10.10.219
 
-domain: pve.zagoapps.com
+domain: staging.zagoapps.com
 
 argocd_password: "{{ vault_argocd_password }}"
 ca_bucket: "{{ vault_ca_bucket }}"

@@ -1,5 +1,5 @@
 - name: PostgreSQL server
-  hosts: postgresql-server
+  hosts: postgresql_server
   become: true
 
   handlers:

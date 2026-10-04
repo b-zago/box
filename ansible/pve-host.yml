@@ -1,6 +1,6 @@
 - name: Install proxmox
   become: true
-  hosts: pve-servers
+  hosts: pve_servers
   pre_tasks:
     - name: Check whether Proxmox VE is already running
       ansible.builtin.command: systemctl is-active pve-cluster pvedaemon pveproxy
@@ -146,7 +146,7 @@
 
 - name: Configure terraform user
   become: true
-  hosts: pve-servers
+  hosts: pve_servers
   tasks:
     - name: Run pveum script
       ansible.builtin.script: pveum.sh "{{ pve_user }}" "{{ pve_default_role }}" "{{ pve_token_id }}"
@@ -193,7 +193,7 @@
 
 - name: Configure TLS
   become: true
-  hosts: pve-servers
+  hosts: pve_servers
   pre_tasks:
     - name: Check current CA by issuer
       ansible.builtin.shell: openssl s_client -connect localhost:8006 -showcerts </dev/null 2>/dev/null | openssl x509 -noout -issuer
@@ -246,7 +246,7 @@
 
 - name: Configure network
   become: true
-  hosts: pve-servers
+  hosts: pve_servers
   tasks:
     - name: Ensure ifupdown2 is installed
       ansible.builtin.apt:
@@ -287,7 +287,7 @@
       changed_when: true
 
 - name: Install wireguard
-  hosts: pve-servers
+  hosts: pve_servers
   become: true
   tasks:
     - name: Install wireguard
@@ -347,7 +347,7 @@
         enabled: true
 
 - name: Configure firewall
-  hosts: pve-servers
+  hosts: pve_servers
   become: true
   tasks:
     - name: Ensure ufw is installed

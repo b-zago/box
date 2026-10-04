@@ -1,34 +1,42 @@
+
 locals {
-  server_host = {
-    name = module.k3s-server.hostname
-    ip   = split("/", module.k3s-server.ipv4_address)[0]
-  }
-
-  agent_hosts = [
-    for i, m in module.node_vm : {
-      name = m.hostname
-      ip   = split("/", m.ipv4_address)[0]
+  clusters = {
+    staging = {
+      k3s_version = "v1.36.3+k3s1"
+      server      = { cores = 2, memory = 4096, ip = "10.10.10.11" }
+      agents      = { cores = 2, memory = 4096, ips = ["10.10.10.12", "10.10.10.13"] }
     }
-  ]
-
-  postgresql_host = {
-    name = module.postgresql.hostname
-    ip   = split("/", module.postgresql.ipv4_address)[0]
+    prod = {
+      k3s_version = "v1.36.3+k3s1"
+      server      = { cores = 2, memory = 4096, ip = "10.10.10.21" }
+      agents      = { cores = 3, memory = 12288, ips = ["10.10.10.22", "10.10.10.23"] }
+    }
   }
+
+  nodes = merge([
+    for cname, c in local.clusters : merge(
+      {
+        "${cname}-server" = {
+          cluster = cname
+          role    = "server"
+          cores   = c.server.cores
+          memory  = c.server.memory
+          ip      = c.server.ip
+        }
+      },
+      {
+        for i, ip in try(c.agents.ips, []) : "${cname}-agent-${i + 1}" => {
+          cluster = cname
+          role    = "agent"
+          cores   = c.agents.cores
+          memory  = c.agents.memory
+          ip      = ip
+        }
+      }
+    )
+  ]...)
+
 }
-
-resource "local_file" "k3s_inventory" {
-  content = templatefile("${path.module}/templates/k3s_inventory.tpl", {
-    server_name = local.server_host.name
-    server_ip   = local.server_host.ip
-    pg_name     = local.postgresql_host.name
-    pg_ip       = local.postgresql_host.ip
-    agents      = local.agent_hosts
-  })
-
-  filename = "${path.module}/../../../ansible/inventory/k3s_generated.ini"
-}
-
 
 ###--- MINECRAFT FOR NOW ---###
 resource "proxmox_download_file" "debian13" {
@@ -96,27 +104,18 @@ resource "proxmox_virtual_environment_vm" "minecraft" {
 
 ###--- CLUSTER TEST ---###
 
-module "k3s-server" {
-  source           = "../modules/k3s-node-vm/"
-  ssh_public_key   = file("./config/id_hetz.pub")
-  cores            = 2
-  memory           = 4096
-  hostname         = "k3s-server"
-  ipv4_address     = "10.10.10.11/24"
-  vm_name          = "k3s-server"
-  download_file_id = proxmox_download_file.debian13.id
-}
 
-module "node_vm" {
-  count = 2
+
+module "k3s_node" {
+  for_each = local.nodes
 
   source           = "../modules/k3s-node-vm/"
   ssh_public_key   = file("./config/id_hetz.pub")
-  cores            = 3
-  memory           = 12288
-  hostname         = "k3s-agent-${count.index + 1}"
-  ipv4_address     = "10.10.10.${count.index + 12}/24"
-  vm_name          = "k3s-agent-${count.index + 1}"
+  cores            = each.value.cores
+  memory           = each.value.memory
+  hostname         = each.key
+  vm_name          = each.key
+  ipv4_address     = "${each.value.ip}/24"
   download_file_id = proxmox_download_file.debian13.id
 }
 
@@ -131,4 +130,19 @@ module "postgresql" {
   download_file_id = proxmox_download_file.debian13.id
 }
 
+resource "local_file" "k3s_inventory" {
+  for_each = local.clusters
 
+  content = templatefile("${path.module}/templates/k3s_inventory.tpl", {
+    server_name = module.k3s_node["${each.key}-server"].hostname
+    server_ip   = each.value.server.ip
+    agents = [
+      for k, n in local.nodes : { name = k, ip = n.ip }
+      if n.cluster == each.key && n.role == "agent"
+    ]
+
+    k3s_version = each.value.k3s_version
+  })
+
+  filename = "${path.module}/../../../ansible/inventory/${each.key}/inventory.ini"
+}

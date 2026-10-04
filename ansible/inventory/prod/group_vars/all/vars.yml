@@ -1,0 +1,32 @@
+env: prod
+
+argocd_username: box
+argocd_ip: 10.10.10.221
+traefik_ip: 10.10.10.220
+metallb_pool: 10.10.10.220-10.10.10.229
+
+domain: pve.zagoapps.com
+
+argocd_password: "{{ vault_argocd_password }}"
+ca_bucket: "{{ vault_ca_bucket }}"
+ca_cert_path: "{{ vault_ca_cert_path }}"
+
+s3_bucket: "{{ vault_s3_bucket }}"
+s3_key: "{{ vault_s3_key }}"
+s3_region: "{{ vault_s3_region }}"
+
+force_ca_config: false
+
+eso_role: metal_prod_role
+pg_role: metal_prod_pgsql_role
+iam_roles:
+  metal_prod_role:
+    sub: "system:serviceaccount:external-secrets:external-secrets"
+    ssm_paths:
+      - "/clusters/config"
+      - "/clusters/prod/*"
+      - "/clusters/pgsql/prod/*"
+  metal_prod_pgsql_role:
+    sub: "system:serviceaccount:postgresql-admin:postgresql-admin"
+    ssm_paths:
+      - "/clusters/pgsql/*"
