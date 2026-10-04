@@ -7,3 +7,4 @@ spec:
     - image: ghcr.io/b-zago/nyanify/webserver:71e2f0d
       port: 8000
       name: nyanify
+      useProfileResources: true
