@@ -54,3 +54,24 @@ spec:
       remoteRef:
         key: /clusters/config
         property: data.ghcr-token
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: grafana-secrets
+  namespace: monitoring
+spec:
+  secretStoreRef:
+    name: aws-ssm
+    kind: ClusterSecretStore
+  refreshPolicy: CreatedOnce
+  refreshInterval: 0s
+  data:
+    - secretKey: admin-user
+      remoteRef:
+        key: /clusters/staging/grafana
+        property: username
+    - secretKey: admin-password
+      remoteRef:
+        key: /clusters/staging/grafana
+        property: password

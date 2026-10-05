@@ -1,0 +1,19 @@
+apiVersion: rikami.zagoapps.com/v1alpha1
+kind: Vessel
+metadata:
+  name: ships
+spec:
+  servers:
+    - image: ghcr.io/b-zago/ships/server:latest
+      port: 3000
+      name: ships
+      envs:
+        PORT: "3000"
+        REDIS_HOST: ships-redis
+        REDIS_PORT: "6379"
+        PROD: "1"
+
+      services:
+        - name: ships-redis
+          image: redis:8-alpine
+          port: 6379

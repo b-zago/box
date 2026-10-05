@@ -1,0 +1,63 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    targetRevision: 84.5.0
+    chart: kube-prometheus-stack
+    helm:
+      values: |
+        namespaceOverride: monitoring
+
+        prometheus:
+          prometheusSpec:
+            persistentVolumeClaimRetentionPolicy:
+              whenDeleted: Retain
+              whenScaled: Retain
+            retention: 14d
+            retentionSize: 18GiB
+            serviceMonitorSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
+            ruleSelectorNilUsesHelmValues: false
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 20Gi
+
+        alertmanager:
+          alertmanagerSpec:
+            persistentVolumeClaimRetentionPolicy:
+              whenDeleted: Retain
+              whenScaled: Retain
+            storage:
+              volumeClaimTemplate:
+                spec:
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 5Gi
+
+        grafana:
+          admin:
+            existingSecret: grafana-secrets
+            userKey: admin-user
+            passwordKey: admin-password
+          grafana.ini:
+            server:
+              root_url: https://grafana.int.staging.zagoapps.com
+          route:
+            main:
+              enabled: true
+              hostnames:
+                - grafana.int.staging.zagoapps.com
+              parentRefs:
+                - name: internal-gateway
+                  namespace: internal-gateway

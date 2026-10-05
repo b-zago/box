@@ -15,7 +15,6 @@ spec:
             name: external-secrets
             namespace: external-secrets
 ---
----
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:

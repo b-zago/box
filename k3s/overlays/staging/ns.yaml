@@ -4,3 +4,4 @@ metadata:
   name: staging
   labels:
     name: staging
+    gateway-access/public: "true"

@@ -10,3 +10,4 @@ resources:
   - sa.yaml
   - atlas.yaml
   - rikami.yaml
+  - monitoring.yaml

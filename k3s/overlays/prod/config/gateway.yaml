@@ -14,7 +14,10 @@ spec:
       protocol: HTTPS
       allowedRoutes:
         namespaces:
-          from: All
+          from: Selector
+          selector:
+            matchLabels:
+              gateway-access/public: "true"
       tls:
         mode: Terminate
         certificateRefs:
@@ -25,8 +28,36 @@ spec:
       protocol: HTTPS
       allowedRoutes:
         namespaces:
-          from: All
+          from: Selector
+          selector:
+            matchLabels:
+              gateway-access/public: "true"
       tls:
         mode: Terminate
         certificateRefs:
           - name: zagoapps-com-apex-tls
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: internal-gateway
+  namespace: internal-gateway
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  gatewayClassName: traefik
+  listeners:
+    - name: websecure-int
+      hostname: "*.int.pve.zagoapps.com"
+      port: 9443 # must match the Traefik entrypoint port
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: int-zagoapps-com-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              gateway-access/internal: "true"

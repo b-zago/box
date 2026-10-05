@@ -42,3 +42,18 @@ metadata:
   name: postgresql-admin
   labels:
     name: postgresql-admin
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: internal-gateway
+  labels:
+    name: internal-gateway
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    name: monitoring
+    gateway-access/internal: "true"

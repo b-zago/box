@@ -20,6 +20,21 @@ spec:
         metrics:
           prometheus:
             enabled: true
+
+        ports:
+          websecure-int:
+            port: 9443
+            exposedPort: 443
+            protocol: TCP
+            expose:
+              default: false
+              internal: true
+
         service:
           spec:
             loadBalancerIP: "10.10.10.210"
+          additionalServices:
+            internal:
+              spec:
+                type: LoadBalancer
+                loadBalancerIP: "10.10.10.212"
