@@ -3,6 +3,7 @@ env: staging
 argocd_username: box
 argocd_ip: 10.10.10.211
 traefik_ip: 10.10.10.210
+internal_ip: 10.10.10.212
 metallb_pool: 10.10.10.210-10.10.10.219
 
 domain: staging.zagoapps.com

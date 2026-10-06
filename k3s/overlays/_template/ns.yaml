@@ -4,3 +4,4 @@ metadata:
   name: ${ENV}
   labels:
     name: ${ENV}
+    gateway-access/public: "true"

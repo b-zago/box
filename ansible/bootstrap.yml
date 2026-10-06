@@ -257,6 +257,7 @@
         PG_ROLE_ARN: "{{ tf_output.outputs.providers.value[env][pg_role] | default('unspecified') }}"
         PG_HOST: "{{ pg_host | default('unspecified') }}"
         METALLB_POOL: "{{ metallb_pool }}"
+        INTERNAL_IP: "{{ internal_ip }}"
       become: false
       delegate_to: localhost
 

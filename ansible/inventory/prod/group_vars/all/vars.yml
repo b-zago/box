@@ -3,6 +3,7 @@ env: prod
 argocd_username: box
 argocd_ip: 10.10.10.221
 traefik_ip: 10.10.10.220
+internal_ip: 10.10.10.222
 metallb_pool: 10.10.10.220-10.10.10.229
 
 domain: pve.zagoapps.com

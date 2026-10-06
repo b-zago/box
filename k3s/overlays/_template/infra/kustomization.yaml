@@ -7,3 +7,11 @@ resources:
 patches:
   - path: traefik.yaml
   - path: eso.yaml
+  #delete monitoring stack on bootstrap since it's pretty heavy and could cause OOM on weaker nodes when trying to bootstrap whole cluster at once
+  #best to kustomize monitoring manually later
+  - patch: |
+      $patch: delete
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: monitoring
