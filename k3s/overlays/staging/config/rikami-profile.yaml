@@ -30,3 +30,7 @@ spec:
     limits:
       cpu: 500m
       memory: 256Mi
+  metrics:
+    endpoint: /metrics
+    port: 9000
+    interval: 30s

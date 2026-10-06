@@ -8,6 +8,7 @@ spec:
       port: 8000
       name: scorevault
       useProfileResources: true
+      useProfileMetrics: true
       envs:
         REDIS: scorevault-redis
 
