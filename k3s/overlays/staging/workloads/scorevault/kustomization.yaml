@@ -15,7 +15,7 @@ patches:
         value: scorevault
       - op: replace
         path: /spec/servers/0/image
-        value: ghcr.io/b-zago/scorevault/webserver:1.0.2-staging.10
+        value: ghcr.io/b-zago/scorevault/webserver:1.0.2-staging.11
       - op: add
         path: /spec/servers/0/envs/POSTGRES_DB
         value: scorevault-staging
