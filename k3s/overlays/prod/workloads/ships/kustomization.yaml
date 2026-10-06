@@ -15,4 +15,4 @@ patches:
         value: ships
       - op: replace
         path: /spec/servers/0/image
-        value: ghcr.io/b-zago/ships/server:latest
+        value: ghcr.io/b-zago/ships/server:1.0.2
