@@ -8,3 +8,4 @@ patches:
   - path: traefik.yaml
   - path: eso.yaml
   - path: monitoring.yaml
+  - path: rikami.yaml
