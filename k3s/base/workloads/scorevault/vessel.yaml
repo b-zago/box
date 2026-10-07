@@ -4,12 +4,14 @@ metadata:
   name: scorevault
 spec:
   useProfileResources: true
+  useProfileScheduling: true
   servers:
     - image: ghcr.io/b-zago/scorevault/webserver:latest
       port: 8000
       name: scorevault
       useProfileMetrics: true
       useProfileProbes: true
+      useProfileAutoscaling: true
       envs:
         REDIS: scorevault-redis
 

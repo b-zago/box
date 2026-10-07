@@ -56,3 +56,19 @@ spec:
     endpoint: /metrics
     port: 9000
     interval: 30s
+  scheduling:
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: node-role.kubernetes.io/control-plane
+                  operator: DoesNotExist
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+  autoscaling:
+    minReplicas: 1
+    maxReplicas: 2
+    targetCPUUtilization: 75
