@@ -15,7 +15,7 @@ patches:
         value: nyanify
       - op: replace
         path: /spec/servers/0/image
-        value: ghcr.io/b-zago/nyanify/webserver:1.0.2
+        value: ghcr.io/b-zago/nyanify/webserver:1.0.3
       - op: add
         path: /spec/servers/0/externalSecrets
         value:
