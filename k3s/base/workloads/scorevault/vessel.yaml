@@ -3,12 +3,13 @@ kind: Vessel
 metadata:
   name: scorevault
 spec:
+  useProfileResources: true
   servers:
     - image: ghcr.io/b-zago/scorevault/webserver:latest
       port: 8000
       name: scorevault
-      useProfileResources: true
       useProfileMetrics: true
+      useProfileProbes: true
       envs:
         REDIS: scorevault-redis
 
@@ -16,7 +17,6 @@ spec:
         - name: scorevault-redis
           image: redis:8-alpine
           port: 6379
-          useProfileResources: true
 
       databases:
         - name: scorevault

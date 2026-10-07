@@ -30,6 +30,28 @@ spec:
     limits:
       cpu: 500m
       memory: 256Mi
+  livenessProbe:
+    httpGet:
+      path: /healthz
+      port: entry
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: entry
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  startupProbe:
+    httpGet:
+      path: /ready
+      port: entry
+    periodSeconds: 5
+    failureThreshold: 30
   metrics:
     endpoint: /metrics
     port: 9000
