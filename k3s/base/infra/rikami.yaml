@@ -8,11 +8,12 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/b-zago/rikami-operator
-    targetRevision: HEAD
-    path: dist/
+    repoURL: ghcr.io/b-zago/charts
+    chart: rikami
+    targetRevision: 1.0.2
   destination:
     server: https://kubernetes.default.svc
+    namespace: rikami-operator
   syncPolicy:
     automated:
       prune: true
