@@ -15,4 +15,4 @@ patches:
         value: portfolio
       - op: replace
         path: /spec/servers/0/image
-        value: ghcr.io/b-zago/portfolio/webserver:d9a5a09
+        value: ghcr.io/b-zago/portfolio/webserver:1.0.0-staging.8
