@@ -7,7 +7,7 @@ spec:
   gateway: prod-gateway
   pullPolicy: Always
   pullSecret: ghcr-creds
-  domain: pve.zagoapps.com
+  domain: zagoapps.com
   externalSecretsConfig:
     refreshPolicy: CreatedOnce
     refreshInterval: 0s

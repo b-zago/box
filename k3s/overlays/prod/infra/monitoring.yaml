@@ -52,12 +52,12 @@ spec:
             passwordKey: admin-password
           grafana.ini:
             server:
-              root_url: https://grafana.int.pve.zagoapps.com
+              root_url: https://grafana.int.zagoapps.com
           route:
             main:
               enabled: true
               hostnames:
-                - grafana.int.pve.zagoapps.com
+                - grafana.int.zagoapps.com
               parentRefs:
                 - name: internal-gateway
                   namespace: internal-gateway

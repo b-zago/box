@@ -9,7 +9,7 @@ spec:
   gatewayClassName: traefik
   listeners:
     - name: websecure
-      hostname: "*.pve.zagoapps.com"
+      hostname: "*.zagoapps.com"
       port: 8443
       protocol: HTTPS
       allowedRoutes:
@@ -23,7 +23,7 @@ spec:
         certificateRefs:
           - name: zagoapps-com-tls
     - name: websecure-apex
-      hostname: "pve.zagoapps.com"
+      hostname: "zagoapps.com"
       port: 8443
       protocol: HTTPS
       allowedRoutes:
@@ -48,7 +48,7 @@ spec:
   gatewayClassName: traefik
   listeners:
     - name: websecure-int
-      hostname: "*.int.pve.zagoapps.com"
+      hostname: "*.int.zagoapps.com"
       port: 9443 # must match the Traefik entrypoint port
       protocol: HTTPS
       tls:
