@@ -150,6 +150,8 @@ State and backend configuration are kept out of Git.
 
 After an in-place restore, restart the app so it reconnects, check it works, then drop the `_broken_` database.
 
+**Alerts.** In prod, Alertmanager (kube-prometheus-stack) sends its alerts to nyanify's `/alertmanager` endpoint, which delivers them as a Discord DM, for example a node down, a disk filling up, a pod crashlooping or a failed Job. Alertmanager authenticates with `ALERTMANAGER_TOKEN` from nyanify's SSM parameter (`/clusters/prod/nyanify/app`), copied into the `monitoring` namespace by an ExternalSecret.
+
 **Deployments.** Each application's CI pushes a commit that updates its image tag in the matching overlay. Argo CD rolls it out.
 
 ## Security

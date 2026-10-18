@@ -33,7 +33,27 @@ spec:
                       storage: 20Gi
 
         alertmanager:
+          config:
+            route:
+              receiver: nyanify
+              group_by: ["alertname", "namespace"]
+              repeat_interval: 12h
+              routes:
+                # Always-firing heartbeat and inhibition helper: no DMs.
+                - receiver: "null"
+                  matchers: ['alertname =~ "Watchdog|InfoInhibitor"']
+            receivers:
+              - name: "null"
+              - name: nyanify
+                webhook_configs:
+                  - url: http://nyanify.prod.svc.cluster.local/alertmanager
+                    send_resolved: true
+                    http_config:
+                      authorization:
+                        credentials_file: /etc/alertmanager/secrets/alertmanager-nyanify/token
           alertmanagerSpec:
+            secrets:
+              - alertmanager-nyanify
             persistentVolumeClaimRetentionPolicy:
               whenDeleted: Retain
               whenScaled: Retain

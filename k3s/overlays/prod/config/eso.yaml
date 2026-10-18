@@ -75,3 +75,22 @@ spec:
       remoteRef:
         key: /clusters/prod/grafana
         property: password
+---
+# Token Alertmanager sends to nyanify's /alertmanager endpoint, read from
+# nyanify's own app parameter so both sides share one value.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: alertmanager-nyanify
+  namespace: monitoring
+spec:
+  secretStoreRef:
+    name: aws-ssm
+    kind: ClusterSecretStore
+  refreshInterval: 0s
+  refreshPolicy: CreatedOnce
+  data:
+    - secretKey: token
+      remoteRef:
+        key: /clusters/prod/nyanify/app
+        property: ALERTMANAGER_TOKEN
