@@ -14,6 +14,18 @@ spec:
       values: |
         namespaceOverride: monitoring
 
+        # k3s runs these inside the single k3s process (and uses SQLite, not etcd,
+        # on a single server), so there are no separate targets to scrape and their
+        # "Down" alerts would fire permanently.
+        kubeControllerManager:
+          enabled: false
+        kubeScheduler:
+          enabled: false
+        kubeProxy:
+          enabled: false
+        kubeEtcd:
+          enabled: false
+
         prometheus:
           prometheusSpec:
             persistentVolumeClaimRetentionPolicy:
