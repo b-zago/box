@@ -1,0 +1,109 @@
+# Nightly backup of every database in the db-bootstrap list:
+# pg_dump to S3, then a restore into a throwaway database to prove the dump works.
+# Any failure sends a Discord DM through nyanify.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pgsql-backup
+  namespace: postgresql-admin
+spec:
+  schedule: "30 2 * * *"
+  timeZone: Europe/Warsaw
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        spec:
+          restartPolicy: Never
+          serviceAccountName: postgresql-admin
+          containers:
+            - name: backup
+              image: ghcr.io/b-zago/pgsql-bootstrap:1.1.0 # aws-cli + psql + jq
+              envFrom:
+                - configMapRef:
+                    name: pgsql-bootstrap-env
+              env:
+                - name: BUCKET
+                  value: b-zago-pgsql-backups
+                - name: NYANIFY_URL
+                  value: http://nyanify.prod.svc.cluster.local/webhook
+              volumeMounts:
+                - {
+                    name: aws-token,
+                    mountPath: /var/run/secrets/aws,
+                    readOnly: true,
+                  }
+                - { name: config, mountPath: /config, readOnly: true }
+                - { name: work, mountPath: /work }
+              args:
+                - |
+                  set -euo pipefail
+
+                  get() { aws ssm get-parameter --name "$1" --with-decryption \
+                            --query Parameter.Value --output text; }
+
+                  # On failure, DM me through nyanify (signed the same way as nyanwatch).
+                  STEP="startup"
+                  notify() {
+                    status=$?
+                    [ "$status" -eq 0 ] && return
+                    set +e
+                    N=$(get "$SSM_PREFIX/nyanify")
+                    msg=$(printf 'OOOPSIEEE\n\npgsql-backup failed on %s during %s!\nCheck the Job logs in postgresql-admin.' "$CLUSTER" "$STEP")
+                    body=$(jq -nc --argjson id "$(echo "$N" | jq -r .receiver_id)" --arg msg "$msg" \
+                      '{receiver_id: $id, message: $msg}')
+                    sig=$(printf '%s' "$body" | openssl dgst -sha256 -hmac "$(echo "$N" | jq -r .hmac_key)" | sed 's/^.* //')
+                    curl -fsS -X POST "$NYANIFY_URL" -H "Content-Type: application/json" \
+                      -H "x-nyanify-signature: $sig" -d "$body" || echo "could not notify nyanify"
+                    exit "$status"
+                  }
+                  trap notify EXIT
+
+                  ADMIN=$(get "$SSM_PREFIX/admin")
+                  PGUSER=$(echo "$ADMIN" | jq -r .username)
+                  PGPASSWORD=$(echo "$ADMIN" | jq -r .password)
+                  export PGUSER PGPASSWORD
+
+                  STAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
+
+                  for db in $(grep -vE '^\s*(#|$)' /config/databases); do
+                    f="/work/$db.dump"
+                    test_db="${db}_restore_test"
+
+                    STEP="backup of $db"
+                    pg_dump -h "$PGHOST" -d "$db" --format=custom --file="$f"
+                    aws s3 cp "$f" "s3://$BUCKET/pgsql/$CLUSTER/$db/$STAMP.dump" --only-show-errors
+
+                    STEP="restore test of $db"
+                    psql -h "$PGHOST" -d postgres -v ON_ERROR_STOP=1 -v t="$test_db" <<'SQL'
+                  DROP DATABASE IF EXISTS :"t";
+                  CREATE DATABASE :"t";
+                  SQL
+                    pg_restore -h "$PGHOST" -d "$test_db" --no-owner --no-acl --exit-on-error "$f"
+                    tables=$(psql -h "$PGHOST" -d "$test_db" -Atc \
+                      "SELECT count(*) FROM information_schema.tables
+                       WHERE table_schema NOT IN ('pg_catalog', 'information_schema')")
+                    psql -h "$PGHOST" -d postgres -v ON_ERROR_STOP=1 -v t="$test_db" <<'SQL'
+                  DROP DATABASE :"t";
+                  SQL
+                    [ "$tables" -gt 0 ] || { echo "restore test of $db found no tables"; exit 1; }
+
+                    echo "$db: s3://$BUCKET/pgsql/$CLUSTER/$db/$STAMP.dump, restore test ok ($tables tables)"
+                    rm -f "$f"
+                  done
+          volumes:
+            - name: config
+              configMap:
+                name: db-bootstrap
+            - name: work
+              emptyDir: {}
+            - name: aws-token
+              projected:
+                sources:
+                  - serviceAccountToken:
+                      audience: sts.amazonaws.com
+                      expirationSeconds: 3600
+                      path: token

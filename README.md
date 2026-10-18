@@ -138,6 +138,8 @@ State and backend configuration are kept out of Git.
 
 **Databases.** Application databases are listed in a ConfigMap (`config/databases.yaml`), and their credentials are stored in AWS SSM with `k3s/scripts/put-pgsql-creds.sh`. A bootstrap Job reads the PostgreSQL admin credential and the application credentials directly from SSM and creates each database with its roles. External Secrets then delivers the application credentials to the app. The admin credential never becomes a Kubernetes Secret.
 
+**Backups.** A nightly CronJob in prod (`k3s/overlays/prod/config/pgsql-backup.yaml`) dumps every database to S3 (`terraform/aws/backups`, kept for 14 days) and restores each dump into a throwaway database to check that it works. Any failure sends a Discord DM through nyanify. The Job reads the nyanify HMAC key and receiver ID from the SSM parameter `/clusters/pgsql/nyanify`. Run it on demand with `kubectl create job -n postgresql-admin --from=cronjob/pgsql-backup pgsql-backup-manual`.
+
 **Deployments.** Each application's CI pushes a commit that updates its image tag in the matching overlay. Argo CD rolls it out.
 
 ## Security
