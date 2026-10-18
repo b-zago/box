@@ -60,17 +60,26 @@ resource "aws_s3_bucket_lifecycle_configuration" "backups" {
   }
 }
 
-# The prod postgresql-admin role (created in ../oidc) may only add prod backups.
+# The prod postgresql-admin role (created in ../oidc) writes backups (CronJob)
+# and lists and reads them (restore Job), only under pgsql/prod/. It can't delete them.
 resource "aws_iam_role_policy" "backup" {
   name = "pgsql-backups-s3"
   role = "metal_prod_pgsql_role"
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["s3:PutObject"]
-      Resource = "${aws_s3_bucket.backups.arn}/pgsql/prod/*"
-    }]
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:PutObject", "s3:GetObject"]
+        Resource = "${aws_s3_bucket.backups.arn}/pgsql/prod/*"
+      },
+      {
+        Effect    = "Allow"
+        Action    = ["s3:ListBucket"]
+        Resource  = aws_s3_bucket.backups.arn
+        Condition = { StringLike = { "s3:prefix" = ["pgsql/prod/*"] } }
+      },
+    ]
   })
 }

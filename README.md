@@ -140,6 +140,16 @@ State and backend configuration are kept out of Git.
 
 **Backups.** A nightly CronJob in prod (`k3s/overlays/prod/config/pgsql-backup.yaml`) dumps every database to S3 (`terraform/aws/backups`, kept for 14 days) and restores each dump into a throwaway database to check that it works. Any failure sends a Discord DM through nyanify. The Job reads the nyanify HMAC key and receiver ID from the SSM parameter `/clusters/pgsql/nyanify`. Run it on demand with `kubectl create job -n postgresql-admin --from=cronjob/pgsql-backup pgsql-backup-manual`.
 
+**Restoring.** `k3s/scripts/run-pgsql-restore-job.sh` runs a restore Job (`k3s/base/jobs/db-restore/job.yaml`) in the cluster, so nothing but `kubectl` is needed locally. It disconnects the app, keeps the current database as `<db>_broken_<timestamp>`, recreates the database the way the bootstrap Job does, and loads the dump as the migrator, so ownership, app grants and Atlas's migration history come back as they were. Data written after the last backup (02:30) is lost.
+
+```sh
+./k3s/scripts/run-pgsql-restore-job.sh scorevault                               # latest backup
+./k3s/scripts/run-pgsql-restore-job.sh scorevault 2026-10-18T003000Z.dump       # a specific backup
+./k3s/scripts/run-pgsql-restore-job.sh scorevault latest scorevault_rehearsal   # rehearsal: new database, prod untouched
+```
+
+After an in-place restore, restart the app so it reconnects, check it works, then drop the `_broken_` database.
+
 **Deployments.** Each application's CI pushes a commit that updates its image tag in the matching overlay. Argo CD rolls it out.
 
 ## Security

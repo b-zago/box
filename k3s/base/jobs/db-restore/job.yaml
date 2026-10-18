@@ -1,0 +1,112 @@
+# Restores a database from its S3 backup. Run it with k3s/scripts/run-pgsql-restore-job.sh,
+# which sets DB, BACKUP and TARGET in the pgsql-restore-params ConfigMap.
+#
+# If TARGET already exists, it's kept as <TARGET>_broken_<timestamp> with connections
+# disabled, then TARGET is recreated like the bootstrap Job does (migrator as owner,
+# app grants) and the dump is loaded as the migrator.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-restore
+  namespace: postgresql-admin
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: postgresql-admin
+      containers:
+        - name: restore
+          image: ghcr.io/b-zago/pgsql-bootstrap:1.1.0 # aws-cli + psql + jq
+          envFrom:
+            - configMapRef:
+                name: pgsql-bootstrap-env
+            - configMapRef:
+                name: pgsql-restore-params
+          env:
+            - name: BUCKET
+              value: b-zago-pgsql-backups
+          volumeMounts:
+            - {
+                name: aws-token,
+                mountPath: /var/run/secrets/aws,
+                readOnly: true,
+              }
+            - { name: work, mountPath: /work }
+          args:
+            - |
+              set -euo pipefail
+
+              get() { aws ssm get-parameter --name "$1" --with-decryption \
+                        --query Parameter.Value --output text; }
+
+              ADMIN=$(get "$SSM_PREFIX/admin")
+              PGUSER=$(echo "$ADMIN" | jq -r .username)
+              PGPASSWORD=$(echo "$ADMIN" | jq -r .password)
+              export PGUSER PGPASSWORD
+
+              TARGET="${TARGET:-$DB}"
+              prefix="s3://$BUCKET/pgsql/$CLUSTER/$DB"
+
+              if [ "$BACKUP" = "latest" ]; then
+                # Backups are named by UTC timestamp, so the last one sorted is the newest.
+                BACKUP=$(aws s3 ls "$prefix/" | awk '{print $4}' | grep '\.dump$' | sort | tail -n 1)
+                [ -n "$BACKUP" ] || { echo "no backups found in $prefix/"; exit 1; }
+              fi
+
+              echo "restoring $prefix/$BACKUP into database $TARGET"
+              aws s3 cp "$prefix/$BACKUP" /work/restore.dump --only-show-errors
+              pg_restore --list /work/restore.dump > /dev/null
+
+              M_USER=$(get "$SSM_PREFIX/$CLUSTER/$DB/migrator" | jq -r .username)
+              A_USER=$(get "$SSM_PREFIX/$CLUSTER/$DB/app" | jq -r .username)
+              BROKEN="${TARGET}_broken_$(date -u +%Y%m%dT%H%M%SZ)"
+
+              psql -h "$PGHOST" -d postgres -v ON_ERROR_STOP=1 \
+                -v target="$TARGET" -v broken="$BROKEN" \
+                -v m_user="$M_USER" -v a_user="$A_USER" <<'SQL'
+              -- Keep the current database for comparison. Block new connections first,
+              -- so the app can't reconnect between disconnecting it and the rename.
+              SELECT format('ALTER DATABASE %I ALLOW_CONNECTIONS false', :'target')
+              WHERE EXISTS (SELECT FROM pg_database WHERE datname = :'target')\gexec
+              SELECT count(pg_terminate_backend(pid)) AS disconnected_sessions
+              FROM pg_stat_activity WHERE datname = :'target' AND pid <> pg_backend_pid();
+              SELECT format('ALTER DATABASE %I RENAME TO %I', :'target', :'broken')
+              WHERE EXISTS (SELECT FROM pg_database WHERE datname = :'target')\gexec
+
+              -- Recreate it the way the bootstrap Job does.
+              CREATE DATABASE :"target" OWNER :"m_user";
+              \connect :"target"
+              SET ROLE :"m_user";
+              ALTER DEFAULT PRIVILEGES IN SCHEMA public
+                GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO :"a_user";
+              ALTER DEFAULT PRIVILEGES IN SCHEMA public
+                GRANT USAGE, SELECT ON SEQUENCES TO :"a_user";
+              SQL
+
+              # As the migrator, so objects get the same owner and app grants as
+              # when Atlas creates them.
+              pg_restore -h "$PGHOST" -d "$TARGET" --role="$M_USER" \
+                --no-owner --no-acl --exit-on-error /work/restore.dump
+
+              tables=$(psql -h "$PGHOST" -d "$TARGET" -Atc \
+                "SELECT count(*) FROM information_schema.tables
+                 WHERE table_schema NOT IN ('pg_catalog', 'information_schema')")
+              echo "restored $tables tables into $TARGET from $BACKUP"
+
+              if psql -h "$PGHOST" -d postgres -Atc \
+                  "SELECT 1 FROM pg_database WHERE datname = '$BROKEN'" | grep -q 1; then
+                echo "previous database kept as $BROKEN; drop it once the app works:"
+                echo "  DROP DATABASE \"$BROKEN\";"
+              fi
+      volumes:
+        - name: work
+          emptyDir: {}
+        - name: aws-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  audience: sts.amazonaws.com
+                  expirationSeconds: 3600
+                  path: token
