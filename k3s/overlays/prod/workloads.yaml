@@ -28,8 +28,3 @@ spec:
             - ../../overlays/prod/workloads/{{.path.basename}}/values.yaml
       destination:
         namespace: prod
-      # TEMPORARY, for the rikami -> helm-framework cutover: no auto-sync, so
-      # nothing reaches the cluster until each app is synced by hand. Remove
-      # once the cutover is done.
-      syncPolicy:
-        automated: null
