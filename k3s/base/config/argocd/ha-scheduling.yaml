@@ -1,0 +1,66 @@
+# The HA install spreads these components one pod per node (required
+# podAntiAffinity on kubernetes.io/hostname). The clusters have 3 nodes, but
+# the control plane is tainted NoSchedule, so:
+# - let these Argo components tolerate the control-plane taint, so all 3 nodes
+#   are usable (redis-ha and haproxy run 3 replicas and need every node);
+# - roll the Deployments one pod at a time, because with one pod per node there
+#   is no free node for a surge pod.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-server
+spec:
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  template:
+    spec:
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-repo-server
+spec:
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  template:
+    spec:
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-redis-ha-haproxy
+spec:
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  template:
+    spec:
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: argocd-redis-ha-server
+spec:
+  template:
+    spec:
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
