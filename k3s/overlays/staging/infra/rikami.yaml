@@ -1,8 +1,0 @@
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: rikami-operator
-  namespace: argocd
-spec:
-  source:
-    targetRevision: 1.0.4-dev.6

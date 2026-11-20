@@ -7,7 +7,6 @@ resources:
   - eso.yaml
   - databases.yaml
   - metallb.yaml
-  - rikami-profile.yaml
   - pgsql-backup.yaml
   - workload-db-secrets.yaml
   - workload-metrics.yaml

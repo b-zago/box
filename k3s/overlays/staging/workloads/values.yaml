@@ -1,5 +1,5 @@
-# Staging-wide helm-framework defaults for every workload (replaces the
-# rikami Profile). Apps override any of these in their own values files.
+# Staging-wide helm-framework defaults for every workload. Apps override any of
+# these in their own values files (see k3s/charts/app/values.yaml).
 
 image:
   pullPolicy: Always

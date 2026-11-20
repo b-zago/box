@@ -12,5 +12,19 @@ spec:
           - path: k3s/overlays/${ENV}/workloads/*
   template:
     spec:
+      # Every workload is the generic helm-framework chart, configured
+      # by layered values files (see k3s/charts/app/values.yaml).
+      source:
+        path: k3s/charts/app
+        helm:
+          releaseName: "{{.path.basename}}"
+          # Name resources after the app (nyanify) rather than <release>-<chart>.
+          parameters:
+            - name: nameOverride
+              value: "{{.path.basename}}"
+          valueFiles:
+            - ../../overlays/${ENV}/workloads/values.yaml
+            - ../../base/workloads/{{.path.basename}}/values.yaml
+            - ../../overlays/${ENV}/workloads/{{.path.basename}}/values.yaml
       destination:
         namespace: ${ENV}

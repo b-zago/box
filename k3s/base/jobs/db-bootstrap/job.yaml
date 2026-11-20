@@ -59,7 +59,7 @@ spec:
 
               \connect :"db"
 
-              -- Atlas creates objects as the migrator, so grant defaults as it.
+              -- Schema Jobs create objects as the migrator, so grant defaults as it.
               SET ROLE :"m_user";
               ALTER DEFAULT PRIVILEGES IN SCHEMA public
                 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO :"a_user";

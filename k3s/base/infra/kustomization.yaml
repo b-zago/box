@@ -8,6 +8,4 @@ resources:
   - ns.yaml
   - traefik.yaml
   - sa.yaml
-  - atlas.yaml
-  - rikami.yaml
   - monitoring.yaml

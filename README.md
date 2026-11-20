@@ -2,7 +2,7 @@
 
 Infrastructure as code for my self-hosted Kubernetes platform: from a plain Debian server to separate **staging** and **production** clusters running real applications, with every step automated. It runs on a Hetzner dedicated server; the host setup was developed and tested end to end on AWS EC2, so the platform isn't tied to one provider.
 
-**Ansible** turns the server into a Proxmox hypervisor and installs Kubernetes. **Terraform** creates the virtual machines and the AWS identity setup. **Argo CD** deploys everything inside the clusters from this repository. Applications are deployed with [rikami-operator](https://github.com/b-zago/rikami-operator), a Kubernetes operator I wrote.
+**Ansible** turns the server into a Proxmox hypervisor and installs Kubernetes. **Terraform** creates the virtual machines and the AWS identity setup. **Argo CD** deploys everything inside the clusters from this repository. Applications are Helm releases of one generic chart built on the [helm-framework](https://github.com/k8s-stuff/helm-framework) library chart.
 
 ## Highlights
 
@@ -44,7 +44,7 @@ Infrastructure as code for my self-hosted Kubernetes platform: from a plain Debi
 
 Both clusters share one PostgreSQL VM (2 vCPU, 4 GB) running outside Kubernetes.
 
-**Platform components** (deployed by Argo CD in each cluster): Traefik as the Gateway API implementation, MetalLB, cert-manager (Let's Encrypt wildcard certificates via Cloudflare DNS-01), External Secrets Operator, Atlas Operator for schema migrations, kube-prometheus-stack, and rikami-operator.
+**Platform components** (deployed by Argo CD in each cluster): Traefik as the Gateway API implementation, MetalLB, cert-manager (Let's Encrypt wildcard certificates via Cloudflare DNS-01), External Secrets Operator, and kube-prometheus-stack.
 
 ## AWS access without static credentials
 
@@ -133,14 +133,14 @@ State and backend configuration are kept out of Git.
 | Application | Contents                                                                                                                                     |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `infra`     | Helm-based platform components (see [Architecture](#architecture)).                                                                          |
-| `config`    | Their environment-specific configuration: Gateways, ClusterIssuer, ClusterSecretStore, MetalLB pools, the rikami Profile, the database list. |
-| `workloads` | Applications, each described as a rikami `Vessel`.                                                                                           |
+| `config`    | Their environment-specific configuration: Gateways, ClusterIssuer, ClusterSecretStore, MetalLB pools, the database list, workload DB credentials. |
+| `workloads` | Applications: the generic chart `k3s/charts/app`, configured per app by layered values files (env defaults, app, env app).                  |
 
-**Databases.** Application databases are listed in a ConfigMap (`config/databases.yaml`), and their credentials are stored in AWS SSM with `k3s/scripts/put-pgsql-creds.sh`. A bootstrap Job reads the PostgreSQL admin credential and the application credentials directly from SSM and creates each database with its roles. External Secrets then delivers the application credentials to the app. The admin credential never becomes a Kubernetes Secret.
+**Databases.** Application databases are listed in a ConfigMap (`config/databases.yaml`), and their credentials are stored in AWS SSM with `k3s/scripts/put-pgsql-creds.sh`. A bootstrap Job reads the PostgreSQL admin credential and the application credentials directly from SSM and creates each database with its roles. External Secrets then delivers the application credentials to the app. Each app's schema is applied by an idempotent Job that Argo CD runs as a PreSync hook, as the migrator. The admin credential never becomes a Kubernetes Secret.
 
 **Backups.** A nightly CronJob in prod (`k3s/overlays/prod/config/pgsql-backup.yaml`) dumps every database to S3 (`terraform/aws/backups`, kept for 14 days) and restores each dump into a throwaway database to check that it works. Any failure sends a Discord DM through nyanify. The Job reads the nyanify HMAC key and receiver ID from the SSM parameter `/clusters/pgsql/nyanify`. Run it on demand with `kubectl create job -n postgresql-admin --from=cronjob/pgsql-backup pgsql-backup-manual`.
 
-**Restoring.** `k3s/scripts/run-pgsql-restore-job.sh` runs a restore Job (`k3s/base/jobs/db-restore/job.yaml`) in the cluster, so nothing but `kubectl` is needed locally. It disconnects the app, keeps the current database as `<db>_broken_<timestamp>`, recreates the database the way the bootstrap Job does, and loads the dump as the migrator, so ownership, app grants and Atlas's migration history come back as they were. Data written after the last backup (02:30) is lost.
+**Restoring.** `k3s/scripts/run-pgsql-restore-job.sh` runs a restore Job (`k3s/base/jobs/db-restore/job.yaml`) in the cluster, so nothing but `kubectl` is needed locally. It disconnects the app, keeps the current database as `<db>_broken_<timestamp>`, recreates the database the way the bootstrap Job does, and loads the dump as the migrator, so ownership and app grants come back as they were. Data written after the last backup (02:30) is lost.
 
 ```sh
 ./k3s/scripts/run-pgsql-restore-job.sh scorevault                               # latest backup
