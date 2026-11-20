@@ -1,0 +1,20 @@
+# Scrapes every workload Service in prod that exposes a port named
+# `metrics` (helm-framework `service.extraPorts`). Services without one
+# produce no targets.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: workloads
+  namespace: prod
+spec:
+  selector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: Exists
+  namespaceSelector:
+    matchNames:
+      - prod
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s

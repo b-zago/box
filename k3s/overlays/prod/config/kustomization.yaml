@@ -9,6 +9,8 @@ resources:
   - metallb.yaml
   - rikami-profile.yaml
   - pgsql-backup.yaml
+  - workload-db-secrets.yaml
+  - workload-metrics.yaml
 
 patches:
   - path: argocd-install-app.yaml
