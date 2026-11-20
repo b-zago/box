@@ -4,6 +4,8 @@ Infrastructure as code for my self-hosted Kubernetes platform: from a plain Debi
 
 **Ansible** turns the server into a Proxmox hypervisor and installs Kubernetes. **Terraform** creates the virtual machines and the AWS identity setup. **Argo CD** deploys everything inside the clusters from this repository. Applications are Helm releases of one generic chart built on the [helm-framework](https://github.com/k8s-stuff/helm-framework) library chart.
 
+> Applications used to be deployed with [rikami-operator](https://github.com/b-zago/rikami-operator), a Kubernetes operator I wrote. I've since moved them to opinionated Helm charts: they're more flexible, and there's no operator to maintain.
+
 ## Highlights
 
 - **No static cloud credentials.** The clusters authenticate to AWS through OIDC federation, the self-hosted equivalent of IRSA on EKS. Secrets are pulled from AWS SSM with short-lived tokens, and no AWS keys exist anywhere in the clusters. See [how it works](#aws-access-without-static-credentials).
