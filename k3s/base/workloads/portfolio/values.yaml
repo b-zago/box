@@ -1,0 +1,14 @@
+image:
+  repository: ghcr.io/b-zago/portfolio/webserver
+
+service:
+  targetPort: 80
+
+httpRoute:
+  enabled: true
+  paths:
+    - path: /
+
+# Static site without /healthz or /ready.
+healthChecks:
+  enabled: false

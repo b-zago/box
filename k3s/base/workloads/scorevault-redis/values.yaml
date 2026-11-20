@@ -1,0 +1,19 @@
+# In-cluster redis for scorevault (no route).
+image:
+  repository: redis
+  tag: 8-alpine
+
+service:
+  port: 6379
+  targetPort: 6379
+
+healthChecks:
+  enabled: false
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: node-role.kubernetes.io/control-plane
+              operator: DoesNotExist

@@ -8,6 +8,8 @@ resources:
   - databases.yaml
   - metallb.yaml
   - rikami-profile.yaml
+  - workload-db-secrets.yaml
+  - workload-metrics.yaml
 
 patches:
   - path: argocd-install-app.yaml

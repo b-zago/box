@@ -1,0 +1,19 @@
+image:
+  repository: ghcr.io/b-zago/ships/server
+
+service:
+  targetPort: 3000
+  extraPorts:
+    - name: metrics
+      port: 9000
+
+httpRoute:
+  enabled: true
+  paths:
+    - path: /
+
+envVars:
+  PORT: "3000"
+  REDIS_HOST: ships-redis
+  REDIS_PORT: "6379"
+  PROD: "1"

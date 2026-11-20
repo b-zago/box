@@ -1,0 +1,11 @@
+# In-cluster redis for ships (no route).
+image:
+  repository: redis
+  tag: 8-alpine
+
+service:
+  port: 6379
+  targetPort: 6379
+
+healthChecks:
+  enabled: false

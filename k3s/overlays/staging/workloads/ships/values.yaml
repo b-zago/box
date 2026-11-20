@@ -1,0 +1,6 @@
+image:
+  tag: 1.0.3-staging.4
+
+httpRoute:
+  hostnames:
+    - ships.staging.zagoapps.com

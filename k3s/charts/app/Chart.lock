@@ -1,0 +1,6 @@
+dependencies:
+- name: helm-framework
+  repository: oci://ghcr.io/k8s-stuff
+  version: 1.6.1
+digest: sha256:3d9e992f7d61ed10e589d08824c5eb05d474947f9b49636548f58f1f35a1be60
+generated: "2026-11-20T10:04:17.709269415+01:00"

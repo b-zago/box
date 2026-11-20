@@ -1,0 +1,29 @@
+image:
+  repository: ghcr.io/b-zago/nyanify/webserver
+
+service:
+  targetPort: 8000
+  extraPorts:
+    - name: metrics
+      port: 9000
+
+httpRoute:
+  enabled: true
+  paths:
+    - path: /
+
+# From the `nyanify` ExternalSecret (defined per env). TOKEN and HMAC_KEY are
+# required, so pods wait for the Secret instead of starting without them.
+envVars:
+  - name: TOKEN
+    valueFrom:
+      secretKeyRef: {name: nyanify, key: TOKEN}
+  - name: HMAC_KEY
+    valueFrom:
+      secretKeyRef: {name: nyanify, key: HMAC_KEY}
+  - name: ALERTMANAGER_TOKEN
+    valueFrom:
+      secretKeyRef: {name: nyanify, key: ALERTMANAGER_TOKEN, optional: true}
+  - name: ALERT_RECEIVER_ID
+    valueFrom:
+      secretKeyRef: {name: nyanify, key: ALERT_RECEIVER_ID, optional: true}

@@ -1,0 +1,48 @@
+# Staging-wide helm-framework defaults for every workload (replaces the
+# rikami Profile). Apps override any of these in their own values files.
+
+image:
+  pullPolicy: Always
+imagePullSecrets:
+  - name: ghcr-creds
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+httpRoute:
+  parentRefs:
+    - staging-gateway
+
+# Probes for every app; opt out with `healthChecks.enabled: false`.
+healthChecks:
+  enabled: true
+  startupProbe:
+    path: /ready
+    initialDelaySeconds: 0
+    periodSeconds: 5
+    timeoutSeconds: 1
+    failureThreshold: 30
+  livenessProbe:
+    path: /healthz
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  readinessProbe:
+    path: /ready
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# Autoscaling policy; opt in with `horizontalPodAutoscaler.enabled: true`.
+horizontalPodAutoscaler:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 2
+  targetCPUUtilizationPercentage: 75

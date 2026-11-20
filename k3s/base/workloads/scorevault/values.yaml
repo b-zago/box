@@ -1,0 +1,76 @@
+image:
+  repository: ghcr.io/b-zago/scorevault/webserver
+
+service:
+  targetPort: 8000
+  extraPorts:
+    - name: metrics
+      port: 9000
+
+httpRoute:
+  enabled: true
+  paths:
+    - path: /
+
+horizontalPodAutoscaler:
+  enabled: true
+
+# Keep pods off the control plane and spread them across agents.
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: node-role.kubernetes.io/control-plane
+              operator: DoesNotExist
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: scorevault
+
+# The scorevault-db-* Secrets come from ExternalSecrets in the env config
+# (k3s/overlays/<env>/config/workload-db-secrets.yaml), so they exist before
+# the schema Job below runs.
+envVars:
+  - name: REDIS
+    value: scorevault-redis
+  - name: POSTGRES_DB
+    valueFrom:
+      secretKeyRef: {name: scorevault-db-app, key: POSTGRES_DB}
+  - name: db_host
+    valueFrom:
+      secretKeyRef: {name: scorevault-db-app, key: db_host}
+  - name: db_username
+    valueFrom:
+      secretKeyRef: {name: scorevault-db-app, key: db_username}
+  - name: db_password
+    valueFrom:
+      secretKeyRef: {name: scorevault-db-app, key: db_password}
+
+# Schema, applied before every sync (Argo runs helm-framework jobs as PreSync
+# hooks). Must stay idempotent.
+jobs:
+  - name: schema
+    enabled: true
+    image:
+      repository: postgres
+      tag: 17-alpine
+    envFrom:
+      - secretRef:
+          name: scorevault-db-migrator
+    command: ["sh", "-c"]
+    args:
+      - |
+        psql "$url" -v ON_ERROR_STOP=1 <<'SQL'
+        CREATE TABLE IF NOT EXISTS scores (
+          id SERIAL PRIMARY KEY,
+          player VARCHAR(50),
+          score INTEGER,
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+        SQL
+    backoffLimit: 5

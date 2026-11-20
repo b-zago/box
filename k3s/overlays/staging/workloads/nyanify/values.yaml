@@ -1,0 +1,16 @@
+image:
+  tag: 1.0.4-staging.7
+
+httpRoute:
+  hostnames:
+    - nyanify.staging.zagoapps.com
+
+externalSecrets:
+  nyanify:
+    refreshInterval: 0s
+    secretStoreRef:
+      name: aws-ssm
+      kind: ClusterSecretStore
+    dataFrom:
+      - extract:
+          key: /clusters/staging/nyanify/app

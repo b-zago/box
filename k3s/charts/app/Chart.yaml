@@ -1,0 +1,10 @@
+apiVersion: v2
+name: app
+description: Generic chart for every workload in k3s/base/workloads, built on the helm-framework library.
+type: application
+version: 1.0.0
+
+dependencies:
+  - name: helm-framework
+    version: "1.6.1"
+    repository: "oci://ghcr.io/k8s-stuff"

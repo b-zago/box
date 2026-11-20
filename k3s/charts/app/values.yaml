@@ -1,0 +1,7 @@
+# Generic helm-framework chart shared by every workload. It carries no
+# defaults of its own: each Argo app layers these values files (later wins),
+# all using plain helm-framework keys:
+#   1. k3s/overlays/<env>/workloads/values.yaml        env-wide defaults
+#   2. k3s/base/workloads/<app>/values.yaml            the app
+#   3. k3s/overlays/<env>/workloads/<app>/values.yaml  image tag + env-specific bits
+# Reference: https://github.com/k8s-stuff/helm-framework (values-reference).

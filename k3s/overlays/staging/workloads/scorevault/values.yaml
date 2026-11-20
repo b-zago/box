@@ -1,0 +1,6 @@
+image:
+  tag: 1.0.2-staging.11
+
+httpRoute:
+  hostnames:
+    - scorevault.staging.zagoapps.com

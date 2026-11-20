@@ -1,0 +1,2 @@
+# Fetched by `helm dependency build` (Argo CD does this itself from Chart.lock)
+charts/
