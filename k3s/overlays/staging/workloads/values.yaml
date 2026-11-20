@@ -14,6 +14,12 @@ resources:
     cpu: 500m
     memory: 256Mi
 
+# Argo applies each Service only after its Deployment is healthy, so a
+# Service never points at pods that are not Ready yet.
+service:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+
 httpRoute:
   parentRefs:
     - staging-gateway

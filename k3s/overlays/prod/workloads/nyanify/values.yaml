@@ -1,0 +1,16 @@
+image:
+  tag: 1.0.4
+
+httpRoute:
+  hostnames:
+    - nyanify.zagoapps.com
+
+externalSecrets:
+  nyanify:
+    refreshInterval: 0s
+    secretStoreRef:
+      name: aws-ssm
+      kind: ClusterSecretStore
+    dataFrom:
+      - extract:
+          key: /clusters/prod/nyanify/app

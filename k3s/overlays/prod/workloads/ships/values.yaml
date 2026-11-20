@@ -1,0 +1,6 @@
+image:
+  tag: 1.0.3
+
+httpRoute:
+  hostnames:
+    - ships.zagoapps.com
