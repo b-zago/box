@@ -3,13 +3,13 @@
 # The migrator password is generated; the app password is supplied.
 # Won't touch existing parameters unless --force is passed.
 #
-#   ./put-credentials.sh nyanify "$APP_PASSWORD"
-#   ./put-credentials.sh nyanify "$APP_PASSWORD" --force   # rotate
+#   ./put-pgsql-creds.sh scorevault-staging "$APP_PASSWORD" staging
+#   ./put-pgsql-creds.sh scorevault "$APP_PASSWORD" prod --force   # rotate
 
 set -euo pipefail
 
 DB="${1:?usage: $0 <database> <app-password> <cluster> [--force]}"
-APP_PASSWORD="${2:?usage: $0 <database> <app-password> [--force]}"
+APP_PASSWORD="${2:?usage: $0 <database> <app-password> <cluster> [--force]}"
 CLUSTER="${3:?usage: $0 <database> <app-password> <cluster> [--force]}"
 FORCE="${4:-}"
 PREFIX="${SSM_PREFIX:-/clusters/pgsql}"

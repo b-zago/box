@@ -1,8 +1,8 @@
 #!/bin/env bash
 # Run the database bootstrap Job from the manifest committed to Git.
 #
-#   ./bootstrap-db.sh           # from main
-#   ./bootstrap-db.sh <ref>     # from a branch, tag or commit
+#   ./run-pgsql-db-bootstrap-job.sh           # from main
+#   ./run-pgsql-db-bootstrap-job.sh <ref>     # from a branch, tag or commit
 
 set -euo pipefail
 
